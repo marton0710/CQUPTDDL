@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 from httpx import URL
 
 from app.db.repositories import CookieRepositories
-from app.db.session import SessonLocal
 from app.utils import Error, LoginAES
 
 

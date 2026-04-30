@@ -2,10 +2,26 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.utils import Error
+from app.schemas import Register
 from app.db.session import get_session
-from app.service import ChaoXingService, XueZaiService, YuKeTangService
+from app.service import ChaoXingService, XueZaiService, YuKeTangService, UserService
 
 router = APIRouter(prefix="/api")
+
+
+@router.get("/register")
+async def register(
+        user: Register,
+        session: AsyncSession = Depends(get_session)
+):
+    """
+    注册
+    :param user: 注册校验
+    :param session: 数据库session
+    :return:
+    """
+    userservice = UserService(session=session, username=user.username)
+    await userservice.add_new_user()
 
 
 @router.get("/chaoxing/{username}/{password}")

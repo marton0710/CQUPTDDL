@@ -174,7 +174,7 @@ class YuKeTangService:
         if not courses:
             return {}
         # 信号量限制并发数
-        semaphore = asyncio.Semaphore(3)
+        semaphore = asyncio.Semaphore(5)
 
         async def fetch_one_course(
                 course_name: str,

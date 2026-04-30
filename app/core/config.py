@@ -4,7 +4,7 @@ from pydantic_settings import SettingsConfigDict, BaseSettings
 class Settings(BaseSettings):
     """从.env读取配置文件"""
     # 异步数据库
-    database_url: str = "sqlite+aiosqlite:///./data/cookies.db"
+    database_url: str = "mysql+aiomysql://cqupt:123456@127.0.0.1:3306/cquptddl?charset=utf8mb4"
 
     # 数据库调试日志
     db_echo: bool = False
