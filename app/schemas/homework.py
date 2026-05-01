@@ -8,6 +8,7 @@ class Homework(BaseModel):
     作业信息
     """
 
+    course_name: str = Field(description="课程名称")
     title: str = Field(description="作业标题")
     content: str = Field(description="作业内容")
     deadline: datetime | None = Field(description="作业截止时间")

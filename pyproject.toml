@@ -9,6 +9,7 @@ dependencies = [
     "cryptography==47.0.0",
     "fastapi==0.136.1",
     "fuckids",
+    "furl>=2.1.4",
     "httpx==0.28.1",
     "lxml>=6.1.0",
     "playwright==1.59.0",

@@ -1,15 +1,16 @@
 import asyncio
 from datetime import datetime
 
+import httpx
 from fuckids.context import Context
 from fuckids.errors import DataRequired
 from fuckids.workflow import password_login_workflow
-from httpx import AsyncClient, Request
+from httpx import AsyncClient, Client
 
 from app.adapter.platform.base import Platform as BasePlatform
-from app.adapter.platform.xuezai.urls import LOGIN_ENTRYPOINT_URL
+from app.adapter.platform.xuezai.urls import LOGIN_ENTRYPOINT_URL, TODO_URL
 from app.schemas.homework import Homework
-from app.utils.error import LoginFailed
+from app.utils.error import Error, LoginFailed
 
 
 class Xuezai(BasePlatform):
@@ -19,12 +20,14 @@ class Xuezai(BasePlatform):
 
     @staticmethod
     async def login(client: AsyncClient, username: str, password: str):
-        req = Request("GET", LOGIN_ENTRYPOINT_URL)
-        for _ in range(2):
-            req = (await client.send(req)).next_request
-            assert req
-
-        ctx = Context(service=str(req.url), username=username, password=password)
+        resp = await client.get(LOGIN_ENTRYPOINT_URL, follow_redirects=True)
+        sync_client = Client(cookies=client.cookies, verify=False)
+        ctx = Context(
+            service=str(resp.url),
+            username=username,
+            password=password,
+            client=sync_client.cookies,  # type: ignore
+        )
         while True:
             try:
                 redirect_url = await asyncio.to_thread(password_login_workflow.run, ctx)
@@ -41,13 +44,27 @@ class Xuezai(BasePlatform):
             else:
                 break
 
-        await client.get(redirect_url, follow_redirects=True)
+        client.cookies.update(ctx.client.cookies)
+        resp = await client.get(redirect_url, follow_redirects=True)
 
-    async def get_homework(self) -> Homework:
-        return Homework(
-            title="学在重邮",
-            content="学在重邮",
-            deadline=datetime.now(),
-            url="",
-            platform="学在重邮",
-        )
+    @staticmethod
+    async def get_homework(client: AsyncClient):
+        try:
+            resp = await client.get(TODO_URL)
+            resp.raise_for_status()
+            payload: dict = resp.json()["todo_list"]
+            return [
+                Homework(
+                    course_name=item["course_name"],
+                    title=item["title"],
+                    content=item["title"],
+                    url="about:blank",
+                    deadline=datetime.fromisoformat(item["end_time"]),
+                    platform="学在重邮",
+                )
+                for item in payload
+            ]
+        except httpx.HTTPStatusError as e:
+            raise Error(
+                code=e.response.status_code, message=f"获取todo列表失败：{e}"
+            ) from e
