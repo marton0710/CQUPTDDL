@@ -15,7 +15,6 @@ __pycache__/
 htmlcov/
 
 .idea/
-.vscode/
 
 .env
 .env.*
@@ -27,3 +26,5 @@ data/
 playwright/.local-browsers/
 
 *.log
+
+bail.run.sh

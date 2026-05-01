@@ -1,0 +1,24 @@
+[project]
+name = "cquptddl"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "aiomysql==0.3.2",
+    "aiosqlite==0.22.1",
+    "beautifulsoup4==4.14.3",
+    "cryptography==47.0.0",
+    "fastapi==0.136.1",
+    "fuckids",
+    "httpx==0.28.1",
+    "lxml>=6.1.0",
+    "playwright==1.59.0",
+    "pycryptodome==3.23.0",
+    "pycryptodomex==3.23.0",
+    "pydantic==2.13.3",
+    "pydantic-settings==2.14.0",
+    "sqlalchemy==2.0.49",
+    "uvicorn==0.46.0",
+]
+
+[tool.uv.sources]
+fuckids = { git = "https://github.com/BailPlus/fuckids.git" }

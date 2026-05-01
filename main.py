@@ -6,7 +6,7 @@ from app.api import router
 from app.db.init import init_db
 
 if hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy()) # type: ignore
 
 
 @asynccontextmanager

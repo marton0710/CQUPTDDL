@@ -34,7 +34,7 @@ class ChaoXingService:
                 "fid": -1,
                 "uname": username,
                 "password": password,
-                "refer": "https%3A%2F%2Fi.xuexitong.com",
+                "refer": "https://i.xuexitong.com",
                 "t": "true",
                 "forbidotherlogin": 0,
                 "validate": "",
