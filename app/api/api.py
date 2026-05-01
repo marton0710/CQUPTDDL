@@ -86,16 +86,18 @@ async def xuezai(
         await xuezaiservice.close()
 
 
-@router.get("/yuketang")
+@router.get("/yuketang/{user_id}")
 async def yuketang(
+        user_id: int,
         session: AsyncSession = Depends(get_session)
 ):
     """
     雨课堂
-    :param session: 服务器session
+    :param user_id: 用户id
+    :param session: 数据库session
     :return: 状态
     """
-    yuketangservice = await YuKeTangService.create(session=session)
+    yuketangservice = await YuKeTangService.create(session=session, user_id=user_id)
     try:
         homework = await yuketangservice.get_yuketang_homework()
         return {

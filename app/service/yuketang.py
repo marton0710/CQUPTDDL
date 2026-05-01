@@ -11,8 +11,9 @@ from app.utils import shifttime
 class YuKeTangService:
     """长江雨课堂服务层"""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, user_id: int):
         self.session = session
+        self.user_id = user_id
         self.repo = CookieRepositories(session=session)
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0"
@@ -22,13 +23,14 @@ class YuKeTangService:
         self.base_url = "https://changjiang.yuketang.cn"
 
     @classmethod
-    async def create(cls, session: AsyncSession):
+    async def create(cls, session: AsyncSession, user_id: int):
         """
         初始化
+        :param user_id: 用户id
         :param session: 数据库会话
         :return:
         """
-        self = cls(session=session)
+        self = cls(session=session, user_id=user_id)
         cookies = await self._get_cookie_from_db()
         if not await self._valid_cookie(cookie_dict=cookies):
             cookies = await self._get_yuketang_cookie()
@@ -69,10 +71,11 @@ class YuKeTangService:
         从数据库获取
         :return:
         """
-        row = await self.repo.get_cookie(platform=self.platform)
+        row = await self.repo.get_cookie(user_id=self.user_id, platform=self.platform)
         if not row:
             cookies = await self._get_yuketang_cookie()
             await self.repo.create_cookie(
+                user_id=self.user_id,
                 platform=self.platform,
                 cookies=cookies,
             )
@@ -86,6 +89,7 @@ class YuKeTangService:
         :return:
         """
         await self.repo.update_cookie(
+            user_id=self.user_id,
             platform=self.platform,
             cookies=cookie_dict,
         )
