@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils import Error
 from app.schemas import Register
 from app.db.session import get_session
-from app.service import ChaoXingService, XueZaiService, YuKeTangService, UserService
+from app.service import ChaoXingService, XueZaiService, YuKeTangService, UserService, CacheService
 
 router = APIRouter(prefix="/api")
 
@@ -36,9 +36,13 @@ async def chaoxing(
     :return: 状态
     """
     chaoxingservice = ChaoXingService(username=username, password=password)
+    cacheservice = CacheService()
     try:
-        await chaoxingservice.get_chaoxing_cookie()
-        homework = await chaoxingservice.get_chaoxing_activities()
+        homework = await cacheservice.get_or_refresh_homework(
+            user_id=int(username),
+            platform=chaoxingservice.platform,
+            fetcher=chaoxingservice.get_chaoxing_homework,
+        )
         return {
             "errcode": 0,
             "homework": homework,
@@ -66,10 +70,14 @@ async def xuezai(
     :param password: 密码
     :return: 状态
     """
-    xuezaiservice = await XueZaiService.create(username=username, password=password)
+    xuezaiservice = XueZaiService(username=username, password=password)
+    cacheservice = CacheService()
     try:
-        await xuezaiservice.get_xuezai_cookie()
-        homework = await xuezaiservice.get_xuezai_todo()
+        homework = await cacheservice.get_or_refresh_homework(
+            user_id=int(username),
+            platform=xuezaiservice.platform,
+            fetcher=xuezaiservice.get_xuezai_homework,
+        )
         return {
             "errcode": 0,
             "homework": homework,
@@ -98,8 +106,13 @@ async def yuketang(
     :return: 状态
     """
     yuketangservice = await YuKeTangService.create(session=session, user_id=user_id)
+    cacheservice = CacheService()
     try:
-        homework = await yuketangservice.get_yuketang_homework()
+        homework = await cacheservice.get_or_refresh_homework(
+            user_id=user_id,
+            platform=yuketangservice.platform,
+            fetcher=yuketangservice.get_yuketang_homework,
+        )
         return {
             "errcode": 0,
             "homework": homework,

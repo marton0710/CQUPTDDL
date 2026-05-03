@@ -48,7 +48,7 @@ class Xuezai(BasePlatform):
         resp = await client.get(redirect_url, follow_redirects=True)
 
     @staticmethod
-    async def get_homework(client: AsyncClient):
+    async def get_homework(client: AsyncClient) -> list[Homework]:
         try:
             resp = await client.get(TODO_URL)
             resp.raise_for_status()

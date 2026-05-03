@@ -20,5 +20,20 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    # redis相关
+    redis_host: str = "127.0.0.1"
+    redis_port: str = "6379"
+    redis_db: int = 0
+    redis_password: str | None = None
+
+    # 缓存基础时间
+    homework_cache_base_ttl: int = 12 * 60 * 60
+
+    # 缓存偏移时间
+    homework_cache_jitter: int = 30 * 60
+
+    # 请求冷却时间
+    homework_cooldown_ttl: int = 30 * 60 * 60
+
 
 settings = Settings()

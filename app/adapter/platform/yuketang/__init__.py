@@ -44,7 +44,7 @@ class Yuketang(BasePlatform):
             raise Error(code=500, message=f"保存雨课堂登录态失败: {e}") from e
 
     @staticmethod
-    async def get_homework(client: AsyncClient):
+    async def get_homework(client: AsyncClient) -> list[Homework]:
         courses = await Yuketang._get_course(client)
         homeworks = []
         for cn, cid in courses.items():
@@ -52,7 +52,7 @@ class Yuketang(BasePlatform):
         return homeworks
 
     @staticmethod
-    async def _valid_cookie(cookie_dict) -> bool:
+    async def valid_cookie(cookie_dict: dict[str, str]) -> bool:
         """
         验证cookie的合理性
         :return:
@@ -95,7 +95,7 @@ class Yuketang(BasePlatform):
         homeworks: list[Homework] = []
         for item in payload.get("data", {}).get("activities", []):
             if item.get("type") == 5:
-                ddl_timestamp = item["content"]["score_d"] // 1000
+                ddl_timestamp = item["deadline"] // 1000
                 homeworks.append(
                     Homework(
                         course_name=course_name,

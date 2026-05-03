@@ -43,7 +43,7 @@ class Chaoxing(BasePlatform):
             raise LoginFailed(resp_data.get("msg2", resp_data))
 
     @staticmethod
-    async def get_homework(client: AsyncClient):
+    async def get_homework(client: AsyncClient) -> list[Homework]:
         data = (
             (
                 await client.get(
