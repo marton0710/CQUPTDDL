@@ -1,14 +1,21 @@
 import asyncio
 from datetime import datetime
+from turtle import st
 
 import httpx
+from aiomysql import sa
 from fuckids.context import Context
 from fuckids.errors import DataRequired
 from fuckids.workflow import password_login_workflow
 from httpx import AsyncClient, Client
+from httpx._types import CookieTypes
 
 from app.adapter.platform.base import Platform as BasePlatform
-from app.adapter.platform.xuezai.urls import LOGIN_ENTRYPOINT_URL, TODO_URL
+from app.adapter.platform.xuezai.urls import (
+    HOMEWORK_DETAIL_URL,
+    LOGIN_ENTRYPOINT_URL,
+    TODO_URL,
+)
 from app.schemas.homework import Homework
 from app.utils.error import Error, LoginFailed
 
@@ -57,8 +64,9 @@ class Xuezai(BasePlatform):
                 Homework(
                     course_name=item["course_name"],
                     title=item["title"],
-                    content=item["title"],
-                    url="about:blank",
+                    url=HOMEWORK_DETAIL_URL.format(
+                        course_id=item["course_id"], hmw_id=item["id"]
+                    ),
                     deadline=datetime.fromisoformat(item["end_time"]),
                     platform="学在重邮",
                 )
@@ -68,3 +76,8 @@ class Xuezai(BasePlatform):
             raise Error(
                 code=e.response.status_code, message=f"获取todo列表失败：{e}"
             ) from e
+
+    @staticmethod
+    async def valid_cookie(cookie_dict: CookieTypes) -> bool:
+        async with httpx.AsyncClient(cookies=cookie_dict) as client:
+            return (await client.get(TODO_URL)).status_code == 200

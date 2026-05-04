@@ -1,3 +1,5 @@
+import json
+from pprint import pprint
 from unittest import IsolatedAsyncioTestCase
 
 from httpx import AsyncClient
@@ -9,11 +11,16 @@ class TestYuketang(IsolatedAsyncioTestCase):
     cookie = []
 
     async def test_1_login(self):
-        cookies = await Yuketang.login()
+        cookies = json.loads(input("请输入cookie: "))
         self.cookie.append(cookies)
-        print(cookies)
 
     async def test_2_get_homework(self):
         client = AsyncClient(cookies=self.cookie[0])
         homework = await Yuketang.get_homework(client)
-        print(homework)
+        pprint(homework)
+
+    async def test_3_valid_cookie(self):
+        self.assertTrue(await Yuketang.valid_cookie(self.cookie[0]))
+
+    async def test_4_invalid_cookie(self):
+        self.assertFalse(await Yuketang.valid_cookie({}))
