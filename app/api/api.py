@@ -174,14 +174,15 @@ async def yuketang(
     """
     cookies = yuketangrequest.cookies
     um = yuketangrequest.username
-    yuketangservice = YuKeTangService(cookies=cookies)
     cacheservice = CacheService()
     try:
+        yuketangservice = await YuKeTangService.create(cookies=cookies)
         homework = await cacheservice.get_or_refresh_homework(
             username=um,
             platform=yuketangservice.platform,
             fetcher=yuketangservice.get_yuketang_homework,
         )
+        await yuketangservice.close()
         return {
             "errcode": 0,
             "username": um,
@@ -195,5 +196,3 @@ async def yuketang(
                 "message": e.message,
             }
         )
-    finally:
-        await yuketangservice.close()
