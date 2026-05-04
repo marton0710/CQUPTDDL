@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CQUPTDDL Test Frontend</title>
+    <style>
+        :root {
+            --bg: #f3efe7;
+            --panel: #fffdf8;
+            --panel-alt: #f8f1e4;
+            --line: #d9cbb5;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --accent: #b45309;
+            --accent-dark: #92400e;
+            --danger: #b91c1c;
+            --ok: #166534;
+            --shadow: 0 20px 40px rgba(54, 40, 12, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(180, 83, 9, 0.12), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(120, 53, 15, 0.10), transparent 24%),
+                var(--bg);
+        }
+
+        .page {
+            width: min(1180px, calc(100% - 32px));
+            margin: 32px auto 48px;
+        }
+
+        .hero {
+            padding: 28px 30px;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: linear-gradient(135deg, #fffaf1, #f7ecd7);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .hero h1 {
+            margin: 0 0 10px;
+            font-size: 30px;
+            line-height: 1.1;
+        }
+
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            padding: 20px;
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+        }
+
+        .card h2 {
+            margin: 0 0 14px;
+            font-size: 20px;
+        }
+
+        .hint {
+            margin: -4px 0 14px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .field input,
+        .field textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+            color: var(--text);
+            padding: 11px 12px;
+            font: inherit;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .field input:focus,
+        .field textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(180, 83, 9, 0.12);
+        }
+
+        .field textarea {
+            min-height: 118px;
+            resize: vertical;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 999px;
+            padding: 11px 18px;
+            background: var(--accent);
+            color: #fff;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            background: var(--accent-dark);
+        }
+
+        button.secondary {
+            background: #e7dcc8;
+            color: #3f3220;
+        }
+
+        button.secondary:hover {
+            background: #dcccae;
+        }
+
+        .token-box,
+        pre {
+            margin: 0;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: var(--panel-alt);
+            padding: 14px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .status {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: #fffaf3;
+            color: var(--muted);
+            min-height: 48px;
+        }
+
+        .status.ok {
+            border-color: rgba(22, 101, 52, 0.2);
+            background: rgba(22, 101, 52, 0.08);
+            color: var(--ok);
+        }
+
+        .status.error {
+            border-color: rgba(185, 28, 28, 0.2);
+            background: rgba(185, 28, 28, 0.08);
+            color: var(--danger);
+        }
+
+        @media (max-width: 900px) {
+            .grid,
+            .row {
+                grid-template-columns: 1fr;
+            }
+
+            .page {
+                width: min(100% - 20px, 760px);
+                margin-top: 20px;
+            }
+
+            .hero,
+            .card {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <section class="hero">
+        <h1>CQUPTDDL 接口测试页</h1>
+        <p>纯原生前端，主要用来测试注册、登录、JWT 挂载，以及超星、学在重邮、雨课堂这几个受保护接口。</p>
+    </section>
+
+    <div class="grid">
+        <section class="card">
+            <h2>基础配置</h2>
+            <p class="hint">默认后端地址按你当前项目的 `main.py` 使用 `http://127.0.0.1:8080`。</p>
+            <div class="field">
+                <label for="baseUrl">接口根地址</label>
+                <input id="baseUrl" value="http://127.0.0.1:8080" />
+            </div>
+            <div class="field">
+                <label>当前 Token</label>
+                <div id="tokenView" class="token-box">未登录</div>
+            </div>
+            <div class="actions">
+                <button id="saveBaseUrlBtn" class="secondary" type="button">保存地址</button>
+                <button id="clearTokenBtn" class="secondary" type="button">清空 Token</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>注册</h2>
+            <div class="row">
+                <div class="field">
+                    <label for="registerUsername">用户名</label>
+                    <input id="registerUsername" />
+                </div>
+                <div class="field">
+                    <label for="registerEmail">邮箱</label>
+                    <input id="registerEmail" type="email" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label for="registerPassword">密码</label>
+                    <input id="registerPassword" type="password" />
+                </div>
+                <div class="field">
+                    <label for="registerConfirmPassword">确认密码</label>
+                    <input id="registerConfirmPassword" type="password" />
+                </div>
+            </div>
+            <div class="actions">
+                <button id="registerBtn" type="button">发送注册请求</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>登录</h2>
+            <div class="row">
+                <div class="field">
+                    <label for="loginUsername">用户名</label>
+                    <input id="loginUsername" />
+                </div>
+                <div class="field">
+                    <label for="loginEmail">邮箱</label>
+                    <input id="loginEmail" type="email" />
+                </div>
+            </div>
+            <div class="field">
+                <label for="loginPassword">密码</label>
+                <input id="loginPassword" type="password" />
+            </div>
+            <div class="actions">
+                <button id="loginBtn" type="button">登录并保存 Token</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>超星</h2>
+            <p class="hint">这个接口现在需要 Bearer Token，请先登录。</p>
+            <div class="row">
+                <div class="field">
+                    <label for="chaoxingUsername">平台用户名</label>
+                    <input id="chaoxingUsername" />
+                </div>
+                <div class="field">
+                    <label for="chaoxingPassword">平台密码</label>
+                    <input id="chaoxingPassword" type="password" />
+                </div>
+            </div>
+            <div class="actions">
+                <button id="chaoxingBtn" type="button">请求超星</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>学在重邮</h2>
+            <p class="hint">这个接口现在需要 Bearer Token，请先登录。</p>
+            <div class="row">
+                <div class="field">
+                    <label for="xuezaiUsername">平台用户名</label>
+                    <input id="xuezaiUsername" />
+                </div>
+                <div class="field">
+                    <label for="xuezaiPassword">平台密码</label>
+                    <input id="xuezaiPassword" type="password" />
+                </div>
+            </div>
+            <div class="actions">
+                <button id="xuezaiBtn" type="button">请求学在重邮</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>雨课堂</h2>
+            <p class="hint">`cookies` 需要是 JSON 对象格式，比如 `{"sessionid":"xxx"}`。</p>
+            <div class="field">
+                <label for="yuketangUsername">用户名</label>
+                <input id="yuketangUsername" />
+            </div>
+            <div class="field">
+                <label for="yuketangCookies">Cookies JSON</label>
+                <textarea id="yuketangCookies">{
+  "sessionid": "replace-me"
+}</textarea>
+            </div>
+            <div class="actions">
+                <button id="yuketangBtn" type="button">请求雨课堂</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>返回结果</h2>
+            <p class="hint">这里会显示最近一次请求的状态、返回头和响应体。</p>
+            <pre id="result">等待请求...</pre>
+            <div id="status" class="status">尚未发起请求。</div>
+        </section>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEYS = {
+        baseUrl: "cqutpddl_test_base_url",
+        token: "cqutpddl_test_token",
+    };
+
+    const elements = {
+        baseUrl: document.getElementById("baseUrl"),
+        tokenView: document.getElementById("tokenView"),
+        result: document.getElementById("result"),
+        status: document.getElementById("status"),
+        registerUsername: document.getElementById("registerUsername"),
+        registerEmail: document.getElementById("registerEmail"),
+        registerPassword: document.getElementById("registerPassword"),
+        registerConfirmPassword: document.getElementById("registerConfirmPassword"),
+        loginUsername: document.getElementById("loginUsername"),
+        loginEmail: document.getElementById("loginEmail"),
+        loginPassword: document.getElementById("loginPassword"),
+        chaoxingUsername: document.getElementById("chaoxingUsername"),
+        chaoxingPassword: document.getElementById("chaoxingPassword"),
+        xuezaiUsername: document.getElementById("xuezaiUsername"),
+        xuezaiPassword: document.getElementById("xuezaiPassword"),
+        yuketangUsername: document.getElementById("yuketangUsername"),
+        yuketangCookies: document.getElementById("yuketangCookies"),
+    };
+
+    function loadBaseUrl() {
+        const saved = localStorage.getItem(STORAGE_KEYS.baseUrl);
+        if (saved) {
+            elements.baseUrl.value = saved;
+        }
+    }
+
+    function saveBaseUrl() {
+        localStorage.setItem(STORAGE_KEYS.baseUrl, getBaseUrl());
+        setStatus("接口地址已保存。", "ok");
+    }
+
+    function getBaseUrl() {
+        return elements.baseUrl.value.trim().replace(/\/+$/, "");
+    }
+
+    function getToken() {
+        return localStorage.getItem(STORAGE_KEYS.token) || "";
+    }
+
+    function setToken(token) {
+        localStorage.setItem(STORAGE_KEYS.token, token);
+        renderToken();
+    }
+
+    function clearToken() {
+        localStorage.removeItem(STORAGE_KEYS.token);
+        renderToken();
+        setStatus("Token 已清空。", "ok");
+    }
+
+    function renderToken() {
+        const token = getToken();
+        elements.tokenView.textContent = token || "未登录";
+    }
+
+    function setStatus(message, type) {
+        elements.status.textContent = message;
+        elements.status.className = "status" + (type ? " " + type : "");
+    }
+
+    function printResult(data) {
+        elements.result.textContent = data;
+    }
+
+    async function requestJson(path, payload, withAuth) {
+        const url = getBaseUrl() + path;
+        const headers = {
+            "Content-Type": "application/json",
+        };
+
+        if (withAuth) {
+            const token = getToken();
+            if (!token) {
+                throw new Error("当前没有 Token，请先登录。");
+            }
+            headers.Authorization = "Bearer " + token;
+        }
+
+        setStatus("正在请求 " + path + " ...", "");
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+
+        const rawText = await response.text();
+        let parsedBody;
+
+        try {
+            parsedBody = rawText ? JSON.parse(rawText) : null;
+        } catch {
+            parsedBody = rawText;
+        }
+
+        printResult(JSON.stringify({
+            url,
+            status: response.status,
+            ok: response.ok,
+            headers: Object.fromEntries(response.headers.entries()),
+            body: parsedBody,
+        }, null, 2));
+
+        if (!response.ok) {
+            const detail = parsedBody && typeof parsedBody === "object"
+                ? JSON.stringify(parsedBody)
+                : String(parsedBody);
+            throw new Error("请求失败，状态码 " + response.status + "，响应：" + detail);
+        }
+
+        setStatus(path + " 请求成功。", "ok");
+        return parsedBody;
+    }
+
+    function safeJsonParse(text) {
+        try {
+            const parsed = JSON.parse(text);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                return parsed;
+            }
+            throw new Error("cookies 必须是 JSON 对象。");
+        } catch (error) {
+            throw new Error("cookies JSON 解析失败：" + error.message);
+        }
+    }
+
+    async function handleRegister() {
+        const payload = {
+            username: elements.registerUsername.value.trim(),
+            password: elements.registerPassword.value,
+            confirm_password: elements.registerConfirmPassword.value,
+            email: elements.registerEmail.value.trim(),
+        };
+
+        await requestJson("/api/register", payload, false);
+    }
+
+    async function handleLogin() {
+        const payload = {
+            username: elements.loginUsername.value.trim(),
+            password: elements.loginPassword.value,
+            email: elements.loginEmail.value.trim(),
+        };
+
+        const data = await requestJson("/api/login", payload, false);
+        const token = data && (data.token || data.access_token);
+
+        if (!token) {
+            throw new Error("登录响应里没有找到 token 字段。");
+        }
+
+        setToken(token);
+        setStatus("登录成功，Token 已保存。", "ok");
+    }
+
+    async function handleChaoxing() {
+        const payload = {
+            username: elements.chaoxingUsername.value.trim(),
+            password: elements.chaoxingPassword.value,
+        };
+
+        await requestJson("/api/chaoxing", payload, true);
+    }
+
+    async function handleXuezai() {
+        const payload = {
+            username: elements.xuezaiUsername.value.trim(),
+            password: elements.xuezaiPassword.value,
+        };
+
+        await requestJson("/api/xuezai", payload, true);
+    }
+
+    async function handleYuketang() {
+        const payload = {
+            username: elements.yuketangUsername.value.trim(),
+            cookies: safeJsonParse(elements.yuketangCookies.value),
+        };
+
+        await requestJson("/api/yuketang", payload, true);
+    }
+
+    async function runAction(action) {
+        try {
+            await action();
+        } catch (error) {
+            setStatus(error.message || "请求失败。", "error");
+        }
+    }
+
+    document.getElementById("saveBaseUrlBtn").addEventListener("click", saveBaseUrl);
+    document.getElementById("clearTokenBtn").addEventListener("click", clearToken);
+    document.getElementById("registerBtn").addEventListener("click", () => runAction(handleRegister));
+    document.getElementById("loginBtn").addEventListener("click", () => runAction(handleLogin));
+    document.getElementById("chaoxingBtn").addEventListener("click", () => runAction(handleChaoxing));
+    document.getElementById("xuezaiBtn").addEventListener("click", () => runAction(handleXuezai));
+    document.getElementById("yuketangBtn").addEventListener("click", () => runAction(handleYuketang));
+
+    loadBaseUrl();
+    renderToken();
+</script>
+</body>
+</html>

@@ -12,10 +12,10 @@ class Cookie(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # user_id
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    # user_id: Mapped[int] = mapped_column(
+    #     ForeignKey("user.id", ondelete="CASCADE"),
+    #     nullable=False,
+    # )
 
     # cookie
     cookies: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False)
@@ -24,4 +24,4 @@ class Cookie(Base):
     platform: Mapped[str] = mapped_column(String(24), nullable=False)
 
     # user
-    user: Mapped["User"] = relationship(back_populates="cookies")
+    # user: Mapped["User"] = relationship(back_populates="cookies")

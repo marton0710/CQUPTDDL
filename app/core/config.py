@@ -12,14 +12,6 @@ class Settings(BaseSettings):
     # 时区
     timezone: str = "Asia/Shanghai"
 
-    # 读取.env，忽略额外字段
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-        case_sensitive=False,
-    )
-
     # redis相关
     redis_host: str = "127.0.0.1"
     redis_port: str = "6379"
@@ -34,6 +26,19 @@ class Settings(BaseSettings):
 
     # 请求冷却时间
     homework_cooldown_ttl: int = 30 * 60 * 60
+
+    # JWT相关
+    SECRET_KEY: str = "secrity-access-key-secrity-access-key"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 7 * 24 * 60
+
+    # 读取.env，忽略额外字段
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
 
 
 settings = Settings()

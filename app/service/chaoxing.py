@@ -1,9 +1,7 @@
 import httpx
 
-from app.db.repositories import CookieRepositories
 from app.adapter.platform.chaoxing import Chaoxing
 from app.schemas import Homework
-from app.utils import Error
 
 
 class ChaoXingService:
