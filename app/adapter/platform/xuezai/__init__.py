@@ -1,12 +1,9 @@
-import asyncio
 from datetime import datetime
-from turtle import st
 
 import httpx
-from aiomysql import sa
-from fuckids.context import Context
+from fuckids.context import AsyncContext
 from fuckids.errors import DataRequired
-from fuckids.workflow import password_login_workflow
+from fuckids.workflow import password_login_workflow_async
 from httpx import AsyncClient, Client
 from httpx._types import CookieTypes
 
@@ -28,16 +25,12 @@ class Xuezai(BasePlatform):
     @staticmethod
     async def login(client: AsyncClient, username: str, password: str):
         resp = await client.get(LOGIN_ENTRYPOINT_URL, follow_redirects=True)
-        sync_client = Client(cookies=client.cookies, verify=False)
-        ctx = Context(
-            service=str(resp.url),
-            username=username,
-            password=password,
-            client=sync_client.cookies,  # type: ignore
+        ctx = AsyncContext(
+            service=str(resp.url), username=username, password=password, client=client
         )
         while True:
             try:
-                redirect_url = await asyncio.to_thread(password_login_workflow.run, ctx)
+                redirect_url = await password_login_workflow_async.run(ctx)
             except DataRequired as e:
                 for k in e.keys:
                     if k == "captcha":
@@ -51,7 +44,7 @@ class Xuezai(BasePlatform):
             else:
                 break
 
-        client.cookies.update(ctx.client.cookies)
+        client = ctx.client
         resp = await client.get(redirect_url, follow_redirects=True)
 
     @staticmethod
