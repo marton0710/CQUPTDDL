@@ -83,7 +83,10 @@ class ChaoXingService:
             await CookieRepositories(session=self.session).save_cookies(
                 user_id=self.owner,
                 platform=self.platform,
-                cookies=dict(self.client.cookies),
+                cookies={
+                    cookie.name: cookie.value
+                    for cookie in self.client.cookies.jar
+                },
             )
             await self.session.commit()
 
