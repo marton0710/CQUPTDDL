@@ -2,12 +2,13 @@ from datetime import datetime
 
 import httpx
 from httpx import AsyncClient
+from httpx._types import CookieTypes
 
 from app.adapter.platform.base import Platform as BasePlatform
 from app.adapter.platform.yuketang.urls import (
-    BASE_URL,
     GET_COURSE_HOMEWORK_URL,
     GET_COURSES_URL,
+    HOMEWORK_DETAIL_URL,
 )
 from app.schemas.homework import Homework
 
@@ -16,7 +17,7 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 
 class Yuketang(BasePlatform):
     @property
-    def name(self) -> str:
+    def name(_) -> str:
         return "雨课堂"
 
     @staticmethod
@@ -28,7 +29,7 @@ class Yuketang(BasePlatform):
         return homeworks
 
     @staticmethod
-    async def valid_cookie(cookie_dict: dict[str, str]) -> bool:
+    async def valid_cookie(cookie_dict: CookieTypes) -> bool:
         """
         验证cookie的合理性
         :return:
@@ -39,9 +40,7 @@ class Yuketang(BasePlatform):
             cookies=cookie_dict,
             timeout=10,
         ) as client:
-            resp = await client.get(url=url, cookies=cookie_dict)
-            payload = resp.json()
-            return payload.get("errcode") == 0
+            return (await client.get(url=url, cookies=cookie_dict)).status_code == 200
 
     @staticmethod
     async def _get_course(client: AsyncClient) -> dict[str, int]:
@@ -65,8 +64,15 @@ class Yuketang(BasePlatform):
     async def _get_course_homeworks(
         client: AsyncClient, course_name: str, classroom_id: int
     ):
-        url = (GET_COURSE_HOMEWORK_URL / str(classroom_id)).url
-        payload = (await client.get(url=url)).raise_for_status().json()
+        payload = (
+            (
+                await client.get(
+                    GET_COURSE_HOMEWORK_URL.format(classroom_id=classroom_id)
+                )
+            )
+            .raise_for_status()
+            .json()
+        )
         homeworks: list[Homework] = []
         for item in payload.get("data", {}).get("activities", []):
             if item.get("type") == 5:
@@ -75,11 +81,12 @@ class Yuketang(BasePlatform):
                     Homework(
                         course_name=course_name,
                         title=item["title"],
-                        content=item["title"],
                         deadline=datetime.fromtimestamp(ddl_timestamp)
                         if ddl_timestamp != 0
                         else None,
-                        url="about:blank",
+                        url=HOMEWORK_DETAIL_URL.format(
+                            classroom_id=classroom_id, hmw_id=item["courseware_id"]
+                        ),
                         platform="雨课堂",
                     )
                 )
@@ -89,12 +96,15 @@ class Yuketang(BasePlatform):
                     Homework(
                         course_name=course_name,
                         title=item["title"],
-                        content=item["title"],
                         deadline=datetime.fromtimestamp(ddl_timestamp)
                         if ddl_timestamp != 0
                         else None,
-                        url="about:blank",
+                        url=HOMEWORK_DETAIL_URL.format(
+                            classroom_id=classroom_id,
+                            hmw_id=item["content"]["leaf_type_id"],
+                        ),
                         platform="雨课堂",
                     )
                 )
+
         return homeworks

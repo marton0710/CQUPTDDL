@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from httpx import AsyncClient
+from httpx._types import CookieTypes
 
 from app.adapter.platform.base import Platform as BasePlatform
 from app.adapter.platform.chaoxing.urls import LOGIN_URL, NOTICE_URL
@@ -45,13 +46,7 @@ class Chaoxing(BasePlatform):
     @staticmethod
     async def get_homework(client: AsyncClient) -> list[Homework]:
         data = (
-            (
-                await client.get(
-                    url=NOTICE_URL,
-                )
-            )
-            .raise_for_status()
-            .json()["notices"]["list"]
+            (await client.get(NOTICE_URL)).raise_for_status().json()["notices"]["list"]
         )
         homeworks: list[Homework] = []
         for item in data:
@@ -65,7 +60,6 @@ class Chaoxing(BasePlatform):
                 homeworks.append(
                     Homework(
                         title=hmw_info["title"],
-                        content=hmw_info["title"],
                         deadline=datetime.fromtimestamp(
                             int(hmw_info["endTime"]) / 1000
                         ),
@@ -77,8 +71,7 @@ class Chaoxing(BasePlatform):
             except Exception:
                 homeworks.append(
                     Homework(
-                        title="发现未知的收件箱",
-                        content=json.dumps(item),
+                        title=f"发现未知的收件箱：{json.dumps(item)}",
                         deadline=None,
                         course_name="警告",
                         url="about:blank",
@@ -86,3 +79,8 @@ class Chaoxing(BasePlatform):
                     )
                 )
         return homeworks
+
+    @staticmethod
+    async def valid_cookie(cookie_dict: CookieTypes) -> bool:
+        async with AsyncClient(cookies=cookie_dict) as client:
+            return (await client.get(NOTICE_URL)).status_code == 200

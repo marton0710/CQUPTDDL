@@ -1,4 +1,5 @@
 from getpass import getpass
+from pprint import pprint
 from unittest import IsolatedAsyncioTestCase
 
 from httpx import AsyncClient
@@ -20,4 +21,10 @@ class TestChaoxingLogin(IsolatedAsyncioTestCase):
         hmw = await Chaoxing.get_homework(
             client=self.client,
         )
-        print(hmw)
+        pprint(hmw)
+
+    async def test_3_valid_cookie(self):
+        self.assertTrue(await Chaoxing.valid_cookie(self.client.cookies))
+
+    async def test_4_invalid_cookie(self):
+        self.assertFalse(await Chaoxing.valid_cookie({}))
