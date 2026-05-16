@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
@@ -42,14 +42,22 @@ class UserRepositories:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_user(self, username: str, email: str) -> User | None:
+    async def get_user_by_username_or_by_email(self, username: str, email: str) -> User | None:
         """
         通过username查询用户
         :param username: 用户名
         :param email: 邮箱
         :return: User对象
         """
-        stmt = select(User).where(User.username == username).where(User.email == email)
+        stmt = (
+            select(User)
+            .where(
+                or_(
+                    User.username == username,
+                    User.email == email,
+                )
+            )
+        )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -63,16 +71,3 @@ class UserRepositories:
         result = await self.session.execute(stmt)
         await self.session.delete(result)
         await self.session.flush()
-
-    # async def get_user_all_cookie(self, username: str) -> list | None:
-    #     """
-    #     获取用户全部cookie
-    #     :param username: 用户名
-    #     :return: cookies列表或者空
-    #     """
-    #     stmt = (select(User).where(User.username == username))
-    #     result = await self.session.execute(stmt)
-    #     user: User = result.scalar_one_or_none()
-    #     if not user:
-    #         return None
-    #     return user.cookies

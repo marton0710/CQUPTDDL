@@ -13,7 +13,7 @@ class CookieRepositories:
 
     async def create_cookie(
             self,
-            user_id: int,
+            user_id: str,
             platform: str,
             cookies: dict[str, str],
     ) -> Cookie:
@@ -33,10 +33,10 @@ class CookieRepositories:
         await self.session.flush()
         return new_cookie
 
-    async def get_cookie(self, user_id: int, platform: str) -> Cookie | None:
+    async def get_cookie(self, user_id: str, platform: str) -> Cookie | None:
         """
         获取cookie
-        :param user_id: 用户id
+        :param user_id: 用户id（用户名）
         :param platform: 平台
         :return: Cookie对象或空
         """
@@ -50,7 +50,7 @@ class CookieRepositories:
 
     async def update_cookie(
             self,
-            user_id: int,
+            user_id: str,
             platform: str,
             cookies: dict[str, str],
     ) -> None:
@@ -71,7 +71,7 @@ class CookieRepositories:
 
     async def save_cookies(
             self,
-            user_id: int,
+            user_id: str,
             platform: str,
             cookies: dict[str, str]
     ) -> Cookie:

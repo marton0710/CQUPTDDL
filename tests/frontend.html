@@ -1,560 +1,732 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CQUPTDDL Test Frontend</title>
-    <style>
-        :root {
-            --bg: #f3efe7;
-            --panel: #fffdf8;
-            --panel-alt: #f8f1e4;
-            --line: #d9cbb5;
-            --text: #1f2937;
-            --muted: #6b7280;
-            --accent: #b45309;
-            --accent-dark: #92400e;
-            --danger: #b91c1c;
-            --ok: #166534;
-            --shadow: 0 20px 40px rgba(54, 40, 12, 0.08);
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CQUPTDDL API 测试台</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-soft: #f0f4f8;
+      --line: #d8dee8;
+      --text: #172033;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --ok: #15803d;
+      --warn: #b45309;
+      --bad: #b91c1c;
+      --shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    * {
+      box-sizing: border-box;
+    }
 
-        body {
-            margin: 0;
-            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-            color: var(--text);
-            background:
-                radial-gradient(circle at top left, rgba(180, 83, 9, 0.12), transparent 28%),
-                radial-gradient(circle at bottom right, rgba(120, 53, 15, 0.10), transparent 24%),
-                var(--bg);
-        }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: var(--bg);
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.5;
+    }
 
-        .page {
-            width: min(1180px, calc(100% - 32px));
-            margin: 32px auto 48px;
-        }
+    .page {
+      width: min(1280px, calc(100% - 28px));
+      margin: 22px auto 36px;
+    }
 
-        .hero {
-            padding: 28px 30px;
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            background: linear-gradient(135deg, #fffaf1, #f7ecd7);
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-        }
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.4fr);
+      gap: 14px;
+      align-items: stretch;
+      margin-bottom: 14px;
+    }
 
-        .hero h1 {
-            margin: 0 0 10px;
-            font-size: 30px;
-            line-height: 1.1;
-        }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
 
-        .hero p {
-            margin: 0;
-            color: var(--muted);
-        }
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      letter-spacing: 0;
+    }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 20px;
-        }
+    h1 {
+      font-size: 24px;
+    }
 
-        .card {
-            padding: 20px;
-            border: 1px solid var(--line);
-            border-radius: 20px;
-            background: var(--panel);
-            box-shadow: var(--shadow);
-        }
+    h2 {
+      font-size: 17px;
+      margin-bottom: 12px;
+    }
 
-        .card h2 {
-            margin: 0 0 14px;
-            font-size: 20px;
-        }
+    h3 {
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
 
-        .hint {
-            margin: -4px 0 14px;
-            color: var(--muted);
-            font-size: 14px;
-        }
+    .subtle {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
 
-        .row {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-        }
+    .grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
 
-        .field {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 12px;
-        }
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
 
-        .field label {
-            font-size: 14px;
-            color: var(--muted);
-        }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
 
-        .field input,
-        .field textarea {
-            width: 100%;
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            background: #fff;
-            color: var(--text);
-            padding: 11px 12px;
-            font: inherit;
-            outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
+    .platform-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
 
-        .field input:focus,
-        .field textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(180, 83, 9, 0.12);
-        }
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
 
-        .field textarea {
-            min-height: 118px;
-            resize: vertical;
-        }
+    input {
+      width: 100%;
+      height: 38px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--text);
+      background: #fff;
+      font: inherit;
+      outline: none;
+    }
 
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 8px;
-        }
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
 
-        button {
-            border: 0;
-            border-radius: 999px;
-            padding: 11px 18px;
-            background: var(--accent);
-            color: #fff;
-            font: inherit;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.15s ease, background 0.2s ease;
-        }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
 
-        button:hover {
-            transform: translateY(-1px);
-            background: var(--accent-dark);
-        }
+    button {
+      min-height: 36px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 7px 12px;
+      background: var(--primary);
+      color: #fff;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
 
-        button.secondary {
-            background: #e7dcc8;
-            color: #3f3220;
-        }
+    button:hover {
+      background: var(--primary-dark);
+    }
 
-        button.secondary:hover {
-            background: #dcccae;
-        }
+    button.secondary {
+      background: #fff;
+      border-color: var(--line);
+      color: var(--text);
+    }
 
-        .token-box,
-        pre {
-            margin: 0;
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            background: var(--panel-alt);
-            padding: 14px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 13px;
-            line-height: 1.6;
-        }
+    button.secondary:hover {
+      background: var(--panel-soft);
+    }
 
-        .status {
-            margin-top: 12px;
-            padding: 12px 14px;
-            border-radius: 14px;
-            border: 1px solid var(--line);
-            background: #fffaf3;
-            color: var(--muted);
-            min-height: 48px;
-        }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
 
-        .status.ok {
-            border-color: rgba(22, 101, 52, 0.2);
-            background: rgba(22, 101, 52, 0.08);
-            color: var(--ok);
-        }
+    .token {
+      min-height: 42px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-soft);
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
 
-        .status.error {
-            border-color: rgba(185, 28, 28, 0.2);
-            background: rgba(185, 28, 28, 0.08);
-            color: var(--danger);
-        }
+    .status-line {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
 
-        @media (max-width: 900px) {
-            .grid,
-            .row {
-                grid-template-columns: 1fr;
-            }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 12px;
+      color: var(--muted);
+    }
 
-            .page {
-                width: min(100% - 20px, 760px);
-                margin-top: 20px;
-            }
+    .badge.ok {
+      color: var(--ok);
+      border-color: rgba(21, 128, 61, 0.24);
+      background: rgba(21, 128, 61, 0.08);
+    }
 
-            .hero,
-            .card {
-                padding: 18px;
-            }
-        }
-    </style>
+    .badge.warn {
+      color: var(--warn);
+      border-color: rgba(180, 83, 9, 0.24);
+      background: rgba(180, 83, 9, 0.08);
+    }
+
+    .badge.bad {
+      color: var(--bad);
+      border-color: rgba(185, 28, 28, 0.24);
+      background: rgba(185, 28, 28, 0.08);
+    }
+
+    .result-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .summary-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--panel-soft);
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .summary-card span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    pre {
+      min-height: 280px;
+      max-height: 620px;
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .log {
+      min-height: 74px;
+      max-height: 170px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .log div {
+      margin-bottom: 4px;
+    }
+
+    @media (max-width: 980px) {
+      .topbar,
+      .grid,
+      .platform-grid,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-<div class="page">
-    <section class="hero">
-        <h1>CQUPTDDL 接口测试页</h1>
-        <p>纯原生前端，主要用来测试注册、登录、JWT 挂载，以及超星、学在重邮、雨课堂这几个受保护接口。</p>
+  <main class="page">
+    <section class="topbar">
+      <div class="panel">
+        <h1>CQUPTDDL API 测试台</h1>
+        <p class="subtle">原生 JS 页面，用来测试注册、登录、平台刷新、聚合获取和 Token 携带。</p>
+        <div class="status-line">
+          <span id="apiState" class="badge">未请求</span>
+          <span id="lastRequest" class="badge">无最近请求</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>连接配置</h2>
+        <div class="form-grid">
+          <label>
+            后端地址
+            <input id="baseUrl" value="http://127.0.0.1:8080" autocomplete="off" />
+          </label>
+          <label>
+            当前 Token
+            <input id="tokenInput" placeholder="登录后自动填入，也可以手动粘贴" autocomplete="off" />
+          </label>
+        </div>
+        <div id="tokenView" class="token">未登录</div>
+        <div class="actions">
+          <button id="saveConfigBtn" type="button" class="secondary">保存配置</button>
+          <button id="clearTokenBtn" type="button" class="secondary">清空 Token</button>
+          <button id="testAllBtn" type="button">测试聚合接口</button>
+        </div>
+      </div>
     </section>
 
-    <div class="grid">
-        <section class="card">
-            <h2>基础配置</h2>
-            <p class="hint">默认后端地址按你当前项目的 `main.py` 使用 `http://127.0.0.1:8080`。</p>
-            <div class="field">
-                <label for="baseUrl">接口根地址</label>
-                <input id="baseUrl" value="http://127.0.0.1:8080" />
-            </div>
-            <div class="field">
-                <label>当前 Token</label>
-                <div id="tokenView" class="token-box">未登录</div>
-            </div>
-            <div class="actions">
-                <button id="saveBaseUrlBtn" class="secondary" type="button">保存地址</button>
-                <button id="clearTokenBtn" class="secondary" type="button">清空 Token</button>
-            </div>
-        </section>
+    <section class="grid">
+      <div class="stack">
+        <div class="panel">
+          <h2>DDL 注册</h2>
+          <label>
+            用户名
+            <input id="registerUsername" autocomplete="username" />
+          </label>
+          <label>
+            邮箱
+            <input id="registerEmail" type="email" autocomplete="email" />
+          </label>
+          <label>
+            密码
+            <input id="registerPassword" type="password" autocomplete="new-password" />
+          </label>
+          <label>
+            确认密码
+            <input id="registerConfirmPassword" type="password" autocomplete="new-password" />
+          </label>
+          <div class="actions">
+            <button id="registerBtn" type="button">注册</button>
+            <button id="copyRegisterToLoginBtn" type="button" class="secondary">填到登录</button>
+          </div>
+        </div>
 
-        <section class="card">
-            <h2>注册</h2>
-            <div class="row">
-                <div class="field">
-                    <label for="registerUsername">用户名</label>
-                    <input id="registerUsername" />
-                </div>
-                <div class="field">
-                    <label for="registerEmail">邮箱</label>
-                    <input id="registerEmail" type="email" />
-                </div>
-            </div>
-            <div class="row">
-                <div class="field">
-                    <label for="registerPassword">密码</label>
-                    <input id="registerPassword" type="password" />
-                </div>
-                <div class="field">
-                    <label for="registerConfirmPassword">确认密码</label>
-                    <input id="registerConfirmPassword" type="password" />
-                </div>
-            </div>
-            <div class="actions">
-                <button id="registerBtn" type="button">发送注册请求</button>
-            </div>
-        </section>
+        <div class="panel">
+          <h2>DDL 登录</h2>
+          <label>
+            用户名
+            <input id="loginUsername" autocomplete="username" />
+          </label>
+          <label>
+            邮箱
+            <input id="loginEmail" type="email" autocomplete="email" />
+          </label>
+          <label>
+            密码
+            <input id="loginPassword" type="password" autocomplete="current-password" />
+          </label>
+          <div class="actions">
+            <button id="loginBtn" type="button">登录并保存 Token</button>
+          </div>
+        </div>
+      </div>
 
-        <section class="card">
-            <h2>登录</h2>
-            <div class="row">
-                <div class="field">
-                    <label for="loginUsername">用户名</label>
-                    <input id="loginUsername" />
-                </div>
-                <div class="field">
-                    <label for="loginEmail">邮箱</label>
-                    <input id="loginEmail" type="email" />
-                </div>
-            </div>
-            <div class="field">
-                <label for="loginPassword">密码</label>
-                <input id="loginPassword" type="password" />
-            </div>
-            <div class="actions">
-                <button id="loginBtn" type="button">登录并保存 Token</button>
-            </div>
-        </section>
-
-        <section class="card">
+      <div class="stack">
+        <div class="platform-grid">
+          <div class="panel">
             <h2>超星</h2>
-            <p class="hint">这个接口现在需要 Bearer Token，请先登录。</p>
-            <div class="row">
-                <div class="field">
-                    <label for="chaoxingUsername">平台用户名</label>
-                    <input id="chaoxingUsername" />
-                </div>
-                <div class="field">
-                    <label for="chaoxingPassword">平台密码</label>
-                    <input id="chaoxingPassword" type="password" />
-                </div>
-            </div>
+            <label>
+              平台账号
+              <input id="chaoxingUsername" autocomplete="off" />
+            </label>
+            <label>
+              平台密码
+              <input id="chaoxingPassword" type="password" autocomplete="off" />
+            </label>
             <div class="actions">
-                <button id="chaoxingBtn" type="button">请求超星</button>
+              <button id="chaoxingBtn" type="button">刷新超星</button>
             </div>
-        </section>
+          </div>
 
-        <section class="card">
+          <div class="panel">
             <h2>学在重邮</h2>
-            <p class="hint">这个接口现在需要 Bearer Token，请先登录。</p>
-            <div class="row">
-                <div class="field">
-                    <label for="xuezaiUsername">平台用户名</label>
-                    <input id="xuezaiUsername" />
-                </div>
-                <div class="field">
-                    <label for="xuezaiPassword">平台密码</label>
-                    <input id="xuezaiPassword" type="password" />
-                </div>
-            </div>
+            <label>
+              平台账号
+              <input id="xuezaiUsername" autocomplete="off" />
+            </label>
+            <label>
+              平台密码
+              <input id="xuezaiPassword" type="password" autocomplete="off" />
+            </label>
             <div class="actions">
-                <button id="xuezaiBtn" type="button">请求学在重邮</button>
+              <button id="xuezaiBtn" type="button">刷新学在</button>
             </div>
-        </section>
+          </div>
 
-        <section class="card">
+          <div class="panel">
             <h2>雨课堂</h2>
-            <p class="hint">`cookies` 需要是 JSON 对象格式，比如 `{"sessionid":"xxx"}`。</p>
-            <div class="field">
-                <label for="yuketangUsername">用户名</label>
-                <input id="yuketangUsername" />
-            </div>
-            <div class="field">
-                <label for="yuketangCookies">Cookies JSON</label>
-                <textarea id="yuketangCookies">{
-  "sessionid": "replace-me"
-}</textarea>
-            </div>
+            <label>
+              平台账号
+              <input id="yuketangUsername" autocomplete="off" />
+            </label>
+            <label>
+              平台密码
+              <input id="yuketangPassword" type="password" autocomplete="off" />
+            </label>
             <div class="actions">
-                <button id="yuketangBtn" type="button">请求雨课堂</button>
+              <button id="yuketangBtn" type="button">刷新雨课堂</button>
             </div>
-        </section>
+          </div>
+        </div>
 
-        <section class="card">
-            <h2>返回结果</h2>
-            <p class="hint">这里会显示最近一次请求的状态、返回头和响应体。</p>
+        <div class="panel">
+          <h2>聚合结果</h2>
+          <div class="summary">
+            <div class="summary-card">
+              <strong>超星</strong>
+              <span id="chaoxingSummary">未请求</span>
+            </div>
+            <div class="summary-card">
+              <strong>学在重邮</strong>
+              <span id="xuezaiSummary">未请求</span>
+            </div>
+            <div class="summary-card">
+              <strong>雨课堂</strong>
+              <span id="yuketangSummary">未请求</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel result-layout">
+          <div>
+            <h2>响应详情</h2>
             <pre id="result">等待请求...</pre>
-            <div id="status" class="status">尚未发起请求。</div>
-        </section>
-    </div>
-</div>
+          </div>
+          <div>
+            <h2>请求日志</h2>
+            <div id="log" class="log"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
-<script>
-    const STORAGE_KEYS = {
-        baseUrl: "cqutpddl_test_base_url",
-        token: "cqutpddl_test_token",
+  <script>
+    const storage = {
+      baseUrl: "cquptddl_test_base_url",
+      token: "cquptddl_test_token"
     };
 
-    const elements = {
-        baseUrl: document.getElementById("baseUrl"),
-        tokenView: document.getElementById("tokenView"),
-        result: document.getElementById("result"),
-        status: document.getElementById("status"),
-        registerUsername: document.getElementById("registerUsername"),
-        registerEmail: document.getElementById("registerEmail"),
-        registerPassword: document.getElementById("registerPassword"),
-        registerConfirmPassword: document.getElementById("registerConfirmPassword"),
-        loginUsername: document.getElementById("loginUsername"),
-        loginEmail: document.getElementById("loginEmail"),
-        loginPassword: document.getElementById("loginPassword"),
-        chaoxingUsername: document.getElementById("chaoxingUsername"),
-        chaoxingPassword: document.getElementById("chaoxingPassword"),
-        xuezaiUsername: document.getElementById("xuezaiUsername"),
-        xuezaiPassword: document.getElementById("xuezaiPassword"),
-        yuketangUsername: document.getElementById("yuketangUsername"),
-        yuketangCookies: document.getElementById("yuketangCookies"),
+    const $ = (id) => document.getElementById(id);
+
+    const el = {
+      baseUrl: $("baseUrl"),
+      tokenInput: $("tokenInput"),
+      tokenView: $("tokenView"),
+      apiState: $("apiState"),
+      lastRequest: $("lastRequest"),
+      result: $("result"),
+      log: $("log"),
+      registerUsername: $("registerUsername"),
+      registerEmail: $("registerEmail"),
+      registerPassword: $("registerPassword"),
+      registerConfirmPassword: $("registerConfirmPassword"),
+      loginUsername: $("loginUsername"),
+      loginEmail: $("loginEmail"),
+      loginPassword: $("loginPassword"),
+      chaoxingUsername: $("chaoxingUsername"),
+      chaoxingPassword: $("chaoxingPassword"),
+      xuezaiUsername: $("xuezaiUsername"),
+      xuezaiPassword: $("xuezaiPassword"),
+      yuketangUsername: $("yuketangUsername"),
+      yuketangPassword: $("yuketangPassword"),
+      chaoxingSummary: $("chaoxingSummary"),
+      xuezaiSummary: $("xuezaiSummary"),
+      yuketangSummary: $("yuketangSummary")
     };
 
-    function loadBaseUrl() {
-        const saved = localStorage.getItem(STORAGE_KEYS.baseUrl);
-        if (saved) {
-            elements.baseUrl.value = saved;
-        }
+    function baseUrl() {
+      return el.baseUrl.value.trim().replace(/\/+$/, "");
     }
 
-    function saveBaseUrl() {
-        localStorage.setItem(STORAGE_KEYS.baseUrl, getBaseUrl());
-        setStatus("接口地址已保存。", "ok");
-    }
-
-    function getBaseUrl() {
-        return elements.baseUrl.value.trim().replace(/\/+$/, "");
-    }
-
-    function getToken() {
-        return localStorage.getItem(STORAGE_KEYS.token) || "";
-    }
-
-    function setToken(token) {
-        localStorage.setItem(STORAGE_KEYS.token, token);
-        renderToken();
-    }
-
-    function clearToken() {
-        localStorage.removeItem(STORAGE_KEYS.token);
-        renderToken();
-        setStatus("Token 已清空。", "ok");
+    function token() {
+      return el.tokenInput.value.trim();
     }
 
     function renderToken() {
-        const token = getToken();
-        elements.tokenView.textContent = token || "未登录";
+      const value = token();
+      el.tokenView.textContent = value || "未登录";
     }
 
-    function setStatus(message, type) {
-        elements.status.textContent = message;
-        elements.status.className = "status" + (type ? " " + type : "");
+    function saveConfig() {
+      localStorage.setItem(storage.baseUrl, baseUrl());
+      localStorage.setItem(storage.token, token());
+      renderToken();
+      setState("配置已保存", "ok");
     }
 
-    function printResult(data) {
-        elements.result.textContent = data;
+    function clearToken() {
+      el.tokenInput.value = "";
+      localStorage.removeItem(storage.token);
+      renderToken();
+      setState("Token 已清空", "warn");
     }
 
-    async function requestJson(path, payload, withAuth) {
-        const url = getBaseUrl() + path;
-        const headers = {
-            "Content-Type": "application/json",
-        };
+    function setState(text, type) {
+      el.apiState.textContent = text;
+      el.apiState.className = "badge" + (type ? " " + type : "");
+    }
 
-        if (withAuth) {
-            const token = getToken();
-            if (!token) {
-                throw new Error("当前没有 Token，请先登录。");
-            }
-            headers.Authorization = "Bearer " + token;
+    function setLastRequest(text, type) {
+      el.lastRequest.textContent = text;
+      el.lastRequest.className = "badge" + (type ? " " + type : "");
+    }
+
+    function log(message) {
+      const line = document.createElement("div");
+      line.textContent = new Date().toLocaleTimeString() + "  " + message;
+      el.log.prepend(line);
+    }
+
+    function showResult(payload) {
+      el.result.textContent = JSON.stringify(payload, null, 2);
+    }
+
+    function setBusy(button, busy) {
+      if (!button) return;
+      button.disabled = busy;
+      if (busy) {
+        button.dataset.label = button.textContent;
+        button.textContent = "请求中...";
+      } else if (button.dataset.label) {
+        button.textContent = button.dataset.label;
+        delete button.dataset.label;
+      }
+    }
+
+    async function request(path, options = {}) {
+      const method = options.method || "GET";
+      const url = baseUrl() + path;
+      const headers = { "Content-Type": "application/json" };
+
+      if (options.auth) {
+        if (!token()) {
+          throw new Error("缺少 Token，请先登录 DDL 或手动粘贴 Token");
         }
+        headers.Authorization = "Bearer " + token();
+      }
 
-        setStatus("正在请求 " + path + " ...", "");
+      setState("请求中", "warn");
+      setLastRequest(method + " " + path);
+      log(method + " " + path);
 
-        const response = await fetch(url, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-        });
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
 
-        const rawText = await response.text();
-        let parsedBody;
+      const text = await response.text();
+      let body = null;
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = text;
+      }
 
-        try {
-            parsedBody = rawText ? JSON.parse(rawText) : null;
-        } catch {
-            parsedBody = rawText;
+      const payload = {
+        request: {
+          method,
+          url,
+          body: options.body || null,
+          auth: Boolean(options.auth)
+        },
+        response: {
+          status: response.status,
+          ok: response.ok,
+          body
         }
+      };
 
-        printResult(JSON.stringify({
-            url,
-            status: response.status,
-            ok: response.ok,
-            headers: Object.fromEntries(response.headers.entries()),
-            body: parsedBody,
-        }, null, 2));
+      showResult(payload);
 
-        if (!response.ok) {
-            const detail = parsedBody && typeof parsedBody === "object"
-                ? JSON.stringify(parsedBody)
-                : String(parsedBody);
-            throw new Error("请求失败，状态码 " + response.status + "，响应：" + detail);
+      if (!response.ok) {
+        setState("请求失败", "bad");
+        setLastRequest(response.status + " " + path, "bad");
+        throw new Error(getErrorMessage(body, response.status));
+      }
+
+      setState("请求成功", "ok");
+      setLastRequest(response.status + " " + path, "ok");
+      return body;
+    }
+
+    function getErrorMessage(body, status) {
+      if (body && typeof body === "object") {
+        const detail = body.detail;
+        if (detail && typeof detail === "object") {
+          return detail.message || detail.code || JSON.stringify(detail);
         }
-
-        setStatus(path + " 请求成功。", "ok");
-        return parsedBody;
+        return body.message || JSON.stringify(body);
+      }
+      return "HTTP " + status + ": " + String(body || "请求失败");
     }
 
-    function safeJsonParse(text) {
-        try {
-            const parsed = JSON.parse(text);
-            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-                return parsed;
-            }
-            throw new Error("cookies 必须是 JSON 对象。");
-        } catch (error) {
-            throw new Error("cookies JSON 解析失败：" + error.message);
+    function platformBody(prefix) {
+      return {
+        username: el[prefix + "Username"].value.trim(),
+        password: el[prefix + "Password"].value
+      };
+    }
+
+    async function register() {
+      return request("/api/ddl/register", {
+        method: "POST",
+        body: {
+          username: el.registerUsername.value.trim(),
+          password: el.registerPassword.value,
+          confirm_password: el.registerConfirmPassword.value,
+          email: el.registerEmail.value.trim()
         }
+      });
     }
 
-    async function handleRegister() {
-        const payload = {
-            username: elements.registerUsername.value.trim(),
-            password: elements.registerPassword.value,
-            confirm_password: elements.registerConfirmPassword.value,
-            email: elements.registerEmail.value.trim(),
-        };
-
-        await requestJson("/api/register", payload, false);
-    }
-
-    async function handleLogin() {
-        const payload = {
-            username: elements.loginUsername.value.trim(),
-            password: elements.loginPassword.value,
-            email: elements.loginEmail.value.trim(),
-        };
-
-        const data = await requestJson("/api/login", payload, false);
-        const token = data && (data.token || data.access_token);
-
-        if (!token) {
-            throw new Error("登录响应里没有找到 token 字段。");
+    async function loginDDL() {
+      const data = await request("/api/ddl/login", {
+        method: "POST",
+        body: {
+          username: el.loginUsername.value.trim(),
+          password: el.loginPassword.value,
+          email: el.loginEmail.value.trim()
         }
+      });
 
-        setToken(token);
-        setStatus("登录成功，Token 已保存。", "ok");
+      if (!data || !data.token) {
+        throw new Error("登录成功但响应中没有 token 字段");
+      }
+
+      el.tokenInput.value = data.token;
+      localStorage.setItem(storage.token, data.token);
+      renderToken();
+      setState("登录成功，Token 已保存", "ok");
+      return data;
     }
 
-    async function handleChaoxing() {
-        const payload = {
-            username: elements.chaoxingUsername.value.trim(),
-            password: elements.chaoxingPassword.value,
-        };
-
-        await requestJson("/api/chaoxing", payload, true);
+    async function refreshPlatform(name) {
+      return request("/api/" + name, {
+        method: "POST",
+        auth: true,
+        body: platformBody(name)
+      });
     }
 
-    async function handleXuezai() {
-        const payload = {
-            username: elements.xuezaiUsername.value.trim(),
-            password: elements.xuezaiPassword.value,
-        };
-
-        await requestJson("/api/xuezai", payload, true);
+    async function allHomework() {
+      const data = await request("/api/ddl/all_homework", {
+        method: "GET",
+        auth: true
+      });
+      renderAllSummary(data);
+      return data;
     }
 
-    async function handleYuketang() {
-        const payload = {
-            username: elements.yuketangUsername.value.trim(),
-            cookies: safeJsonParse(elements.yuketangCookies.value),
-        };
-
-        await requestJson("/api/yuketang", payload, true);
+    function renderAllSummary(data) {
+      const platformData = data && data.data ? data.data : {};
+      renderPlatformSummary("chaoxing", platformData.chaoxing);
+      renderPlatformSummary("xuezai", platformData.xuezai);
+      renderPlatformSummary("yuketang", platformData.yuketang);
     }
 
-    async function runAction(action) {
-        try {
-            await action();
-        } catch (error) {
-            setStatus(error.message || "请求失败。", "error");
-        }
+    function renderPlatformSummary(name, value) {
+      const target = el[name + "Summary"];
+      if (!value) {
+        target.textContent = "无数据";
+        return;
+      }
+
+      const count = Array.isArray(value.homework) ? value.homework.length : 0;
+      if (value.errcode === 0) {
+        target.textContent = "正常，作业 " + count + " 条";
+      } else {
+        target.textContent = "需要重新登录，已有作业 " + count + " 条";
+      }
     }
 
-    document.getElementById("saveBaseUrlBtn").addEventListener("click", saveBaseUrl);
-    document.getElementById("clearTokenBtn").addEventListener("click", clearToken);
-    document.getElementById("registerBtn").addEventListener("click", () => runAction(handleRegister));
-    document.getElementById("loginBtn").addEventListener("click", () => runAction(handleLogin));
-    document.getElementById("chaoxingBtn").addEventListener("click", () => runAction(handleChaoxing));
-    document.getElementById("xuezaiBtn").addEventListener("click", () => runAction(handleXuezai));
-    document.getElementById("yuketangBtn").addEventListener("click", () => runAction(handleYuketang));
+    async function run(button, action) {
+      setBusy(button, true);
+      try {
+        await action();
+      } catch (error) {
+        setState(error.message || "请求失败", "bad");
+        log("失败：" + (error.message || "未知错误"));
+      } finally {
+        setBusy(button, false);
+      }
+    }
 
-    loadBaseUrl();
-    renderToken();
-</script>
+    function copyRegisterToLogin() {
+      el.loginUsername.value = el.registerUsername.value;
+      el.loginEmail.value = el.registerEmail.value;
+      el.loginPassword.value = el.registerPassword.value;
+      setState("已填入登录表单", "ok");
+    }
+
+    function init() {
+      el.baseUrl.value = localStorage.getItem(storage.baseUrl) || el.baseUrl.value;
+      el.tokenInput.value = localStorage.getItem(storage.token) || "";
+      renderToken();
+
+      $("saveConfigBtn").addEventListener("click", saveConfig);
+      $("clearTokenBtn").addEventListener("click", clearToken);
+      $("copyRegisterToLoginBtn").addEventListener("click", copyRegisterToLogin);
+      $("registerBtn").addEventListener("click", (event) => run(event.currentTarget, register));
+      $("loginBtn").addEventListener("click", (event) => run(event.currentTarget, loginDDL));
+      $("chaoxingBtn").addEventListener("click", (event) => run(event.currentTarget, () => refreshPlatform("chaoxing")));
+      $("xuezaiBtn").addEventListener("click", (event) => run(event.currentTarget, () => refreshPlatform("xuezai")));
+      $("yuketangBtn").addEventListener("click", (event) => run(event.currentTarget, () => refreshPlatform("yuketang")));
+      $("testAllBtn").addEventListener("click", (event) => run(event.currentTarget, allHomework));
+      el.tokenInput.addEventListener("input", renderToken);
+    }
+
+    init();
+  </script>
 </body>
 </html>

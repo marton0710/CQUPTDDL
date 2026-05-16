@@ -1,6 +1,5 @@
 import random
 import json
-from collections.abc import Callable, Awaitable
 
 from app.core import redis_client, settings
 from app.schemas import Homework
@@ -84,12 +83,19 @@ class CacheService:
         :return:
         """
         key = self.make_homework_key(username=username, platform=platform)
-        raw = await self.redis.get(key)
-        if raw is None:
-            return None
+        try:
+            raw = await self.redis.get(key)
+            if raw is None:
+                return None
 
-        payload = json.loads(raw)
-        return self._load_homework_list(payload=payload)
+            payload = json.loads(raw)
+            return self._load_homework_list(payload=payload)
+        except Exception:
+            try:
+                await self.redis.delete(key)
+            except Exception:
+                pass
+            return None
 
     async def set_homework_cache(
             self,
@@ -131,25 +137,3 @@ class CacheService:
 
         await self.redis.delete(homework_key)
         await self.redis.delete(cooldown_key)
-
-    async def get_or_refresh_homework(
-            self,
-            username: str,
-            platform: str,
-            fetcher: Callable[[], Awaitable]
-    ) -> list[Homework]:
-        """
-        确定是返回缓存还是重新请求
-        :param username: 用户名
-        :param platform: 平台
-        :param fetcher: 对应平台的service函数
-        :return: 作业列表
-        """
-        cached = await self.get_cached_homework(username=username, platform=platform)
-
-        if cached is not None and await self.in_cooldown(username=username, platform=platform):
-            return cached
-
-        fresh = await fetcher()
-        await self.set_homework_cache(username=username, platform=platform, homework=fresh)
-        return fresh

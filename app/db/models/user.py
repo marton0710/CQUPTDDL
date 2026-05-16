@@ -19,8 +19,9 @@ class User(Base):
 
     # 邮箱
     email: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+
     # cookies
-    # cookies: Mapped[list["Cookie"]] = relationship(
-    #     back_populates="user",
-    #     cascade="all, delete-orphan",
-    # )
+    cookies: Mapped[list["Cookie"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
