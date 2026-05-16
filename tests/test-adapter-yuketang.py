@@ -1,4 +1,4 @@
-import json
+from getpass import getpass
 from pprint import pprint
 from unittest import IsolatedAsyncioTestCase
 
@@ -11,8 +11,9 @@ class TestYuketang(IsolatedAsyncioTestCase):
     cookie = []
 
     async def test_1_login(self):
-        cookies = json.loads(input("请输入cookie: "))
-        self.cookie.append(cookies)
+        client = AsyncClient()
+        await Yuketang.login(client, input("username> "), getpass())
+        self.cookie.append({"sessionid": client.cookies.get("sessionid")})
 
     async def test_2_get_homework(self):
         client = AsyncClient(cookies=self.cookie[0])

@@ -1,6 +1,9 @@
 from datetime import datetime
 
 import httpx
+from fuckids.context import AsyncContext
+from fuckids.errors import DataRequired
+from fuckids.workflow import password_login_workflow_async
 from httpx import AsyncClient
 from httpx._types import CookieTypes
 
@@ -9,8 +12,10 @@ from app.adapter.platform.yuketang.urls import (
     GET_COURSE_HOMEWORK_URL,
     GET_COURSES_URL,
     HOMEWORK_DETAIL_URL,
+    IDSLOGIN_SERVICE_URL,
 )
 from app.schemas.homework import Homework
+from app.utils.error import LoginFailed
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0"
 
@@ -19,6 +24,33 @@ class Yuketang(BasePlatform):
     @property
     def name(_) -> str:
         return "雨课堂"
+
+    @staticmethod
+    async def login(client: AsyncClient, username: str, password: str):
+        ctx = AsyncContext(
+            client=client,
+            service=IDSLOGIN_SERVICE_URL,
+            username=username,
+            password=password,
+        )
+        while True:
+            try:
+                redirect_url = await password_login_workflow_async.run(ctx)
+            except DataRequired as e:
+                for k in e.keys:
+                    match k:
+                        case "captcha":
+                            raise LoginFailed(
+                                "需要验证码。请先去统一认证平台登录一次，以去除验证码"
+                            )
+                        case "kick_existing_session":
+                            ctx.kick_existing_session = True
+                        case _:
+                            raise LoginFailed(f"缺少参数： {k}")
+            else:
+                break
+
+        await client.get(redirect_url, follow_redirects=True)
 
     @staticmethod
     async def get_homework(client: AsyncClient) -> list[Homework]:

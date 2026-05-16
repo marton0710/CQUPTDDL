@@ -1,16 +1,16 @@
-import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
 from collections.abc import Awaitable, Callable
 
-from app.db.models import User
-from app.db.repositories import CookieRepositories
-from app.service.cache_service import CacheService
-from app.schemas import Homework
-from app.utils import Error
+import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.adapter.platform.yuketang import Yuketang
 from app.adapter.platform.chaoxing import Chaoxing
 from app.adapter.platform.xuezai import Xuezai
+from app.adapter.platform.yuketang import Yuketang
+from app.db.models import User
+from app.db.repositories import CookieRepositories
+from app.schemas import Homework
+from app.service.cache_service import CacheService
+from app.utils import Error
 
 
 class AllHomeworkService:
@@ -52,14 +52,14 @@ class AllHomeworkService:
                     platform=Yuketang().name,
                     fetcher=self._fetch_yuketang_homework,
                 ),
-            }
+            },
         }
 
     async def _get_platform_homework(
-            self,
-            username: str,
-            platform: str,
-            fetcher: Callable[[dict[str, str]], Awaitable[list[Homework]]],
+        self,
+        username: str,
+        platform: str,
+        fetcher: Callable[[dict[str, str]], Awaitable[list[Homework]]],
     ) -> dict:
         """
         获取平台作业
@@ -130,7 +130,7 @@ class AllHomeworkService:
         :param cookies: cookies
         :return:
         """
-        if not True:
+        if not Xuezai.valid_cookie(cookies):
             raise Error(code=401, message="学在重邮请重新登录")
 
         async with httpx.AsyncClient(
@@ -141,7 +141,7 @@ class AllHomeworkService:
             return await Xuezai.get_homework(client=client)
 
     async def _fetch_chaoxing_homework(self, cookies: dict[str, str]) -> list[Homework]:
-        if not True:
+        if not Chaoxing.valid_cookie(cookies):
             raise Error(code=401, message="学习通请重新登录")
 
         async with httpx.AsyncClient(

@@ -1,6 +1,6 @@
 [project]
 name = "cquptddl"
-version = "1.6.1"
+version = "1.8"
 requires-python = ">=3.14"
 dependencies = [
     "aiomysql==0.3.2",

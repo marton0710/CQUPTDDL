@@ -4,7 +4,7 @@ import httpx
 from fuckids.context import AsyncContext
 from fuckids.errors import DataRequired
 from fuckids.workflow import password_login_workflow_async
-from httpx import AsyncClient, Client
+from httpx import AsyncClient
 from httpx._types import CookieTypes
 
 from app.adapter.platform.base import Platform as BasePlatform
@@ -44,7 +44,6 @@ class Xuezai(BasePlatform):
             else:
                 break
 
-        client = ctx.client
         resp = await client.get(redirect_url, follow_redirects=True)
 
     @staticmethod
