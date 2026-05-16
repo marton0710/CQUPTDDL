@@ -51,6 +51,9 @@ class Yuketang(BasePlatform):
                 break
 
         await client.get(redirect_url, follow_redirects=True)
+        sessionid = client.cookies["sessionid"]
+        del client.cookies["sessionid"]
+        client.cookies["sessionid"] = sessionid
 
     @staticmethod
     async def get_homework(client: AsyncClient) -> list[Homework]:
