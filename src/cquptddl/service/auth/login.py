@@ -36,3 +36,13 @@ async def get_user_from_token(session: AsyncSession, token: str) -> User:
     user = await User.from_uid(session, uid)
     assert user
     return user
+
+
+def refresh_token(token: str) -> tuple[str, str]:
+    """
+    Returns:
+        new_access_token
+        new_refresh_token
+    """
+    uid = crypto.validate_token(token, True)
+    return crypto.generate_token(uid, False), crypto.generate_token(uid, True)

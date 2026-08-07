@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class LoginInput(BaseModel):
@@ -11,6 +11,7 @@ class LoginOutput(BaseModel):
 
 
 class Userinfo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     # name: str = Field(description="用户姓名")
     email: EmailStr | None = None
     qqchan_id: str | None = None

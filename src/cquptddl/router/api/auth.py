@@ -49,17 +49,19 @@ async def _(
 
 @router.post("/refresh")
 async def _(refresh_token: Annotated[str, Cookie()]):
+    _result: tuple[str, str] = core.call("auth.refresh_token", refresh_token)
+    new_access_token, new_refresh_token = _result
     resp = Response(status_code=204)
     resp.set_cookie(
         "token",
-        "",
+        new_access_token,
         config.ACCESS_TOKEN_EXPIRE_SECONDS,
         secure=not config.DEBUG,
         httponly=True,
     )
     resp.set_cookie(
         "refresh_token",
-        "",
+        new_refresh_token,
         config.REFRESH_TOKEN_EXPIRE_SECONDS,
         path="/api/auth/refresh",
         secure=not config.DEBUG,
@@ -85,4 +87,4 @@ async def _(user: Annotated[User, Depends(need_login)]) -> Userinfo:
 @router.patch("/userinfo", status_code=204)
 async def _(user: Annotated[User, Depends(need_login)], model: Userinfo):
     for field in model.model_fields_set:
-        pass
+        setattr(user, field, getattr(model, field))
