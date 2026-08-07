@@ -1,0 +1,46 @@
+[project]
+name = "cquptddl"
+version = "2.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Marton", email = "1146054766@qq.com"},
+    { name = "Bail", email = "2915289604@qq.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "aiomysql>=0.3.2",
+    "beautifulsoup4>=4.14.3",
+    "fastapi>=0.136.1",
+    "fuckids>=2.4",
+    "furl>=2.1.4",
+    "httpx>=0.28.1",
+    "lxml>=6.1.0",
+    "meetschedule-sdk>=1.1.1",
+    "pycryptodome>=3.23.0",
+    "pydantic[email]>=2.13.3",
+    "pydantic-settings>=2.14.0",
+    "pyjwt>=2.12.1",
+    "sqlmodel>=0.0.38",
+    "uvicorn>=0.46.0",
+]
+
+[[tool.uv.index]]
+name = 'Bail'
+url = "https://pypi.bail.asia/simple/"
+explicit = true
+
+[tool.uv.sources]
+fuckids = { index = "Bail" }
+
+[project.scripts]
+cquptddl = "cquptddl:main"
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.22.1",
+]
