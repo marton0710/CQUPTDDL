@@ -1,11 +1,12 @@
 from collections.abc import Callable
 from typing import Any
 
+from . import db  # noqa: F401
 from .config import config
-from .db import get_session
+from .factory import get_client, get_session
 from .symbol import SymbolTable
 
-__all__ = ["call", "config", "export", "get_session"]
+__all__ = ["call", "config", "export", "factory", "get_client", "get_session"]
 _symbol_table = SymbolTable()
 
 

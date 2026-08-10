@@ -6,8 +6,13 @@ from httpx import AsyncClient
 from httpx._types import CookieTypes
 
 from cquptddl.exc import LoginFailed
+from cquptddl.model.db import User
 from cquptddl.model.db.homework import Homework
-from cquptddl.service.homework.platform.base import AuthMethod, PlatformEnum
+from cquptddl.model.schema.platform_auth import (
+    AuthMethod,
+    PasswordLoginInput,
+    PlatformEnum,
+)
 from cquptddl.service.homework.platform.base import Platform as BasePlatform
 
 from .urls import LOGIN_URL, NOTICE_URL
@@ -21,9 +26,11 @@ class Chaoxing(BasePlatform):
     auth_method = AuthMethod.PASSWORD
 
     @classmethod
-    async def login(cls, client: AsyncClient, username: str, password: str):
-        uid_enc = encryptByAES(username)
-        psw_enc = encryptByAES(password)
+    async def login(
+        cls, client: AsyncClient, user, credentials: PasswordLoginInput
+    ) -> dict[str, str]:  # ty: ignore[invalid-method-override]
+        uid_enc = encryptByAES(credentials.username)
+        psw_enc = encryptByAES(credentials.password)
 
         data = {
             "fid": -1,
@@ -47,8 +54,10 @@ class Chaoxing(BasePlatform):
         if not resp_data["status"]:
             raise LoginFailed(resp_data.get("msg2", resp_data))
 
+        return dict(client.cookies)
+
     @classmethod
-    async def get_homework(cls, client: AsyncClient) -> list[Homework]:
+    async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
         data = (
             (await client.get(NOTICE_URL)).raise_for_status().json()["notices"]["list"]
         )
@@ -64,8 +73,9 @@ class Chaoxing(BasePlatform):
                 homeworks.append(
                     Homework(
                         id=Homework.generate_id(
-                            cls.name, hmw_info["courseName"], hmw_info["title"]
+                            user.id, cls.name, hmw_info["courseName"], hmw_info["title"]
                         ),
+                        user_id=user.id,
                         title=hmw_info["title"],
                         deadline=datetime.fromtimestamp(
                             int(hmw_info["endTime"]) / 1000

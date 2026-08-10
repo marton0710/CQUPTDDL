@@ -7,7 +7,8 @@ from httpx._types import CookieTypes
 
 from cquptddl.exc import CquptddlException, LoginFailed
 from cquptddl.model.db.homework import Homework
-from cquptddl.service.homework.platform.base import AuthMethod, PlatformEnum
+from cquptddl.model.db.user import User
+from cquptddl.model.schema.platform_auth import AuthMethod, IDSLoginInput, PlatformEnum
 from cquptddl.service.homework.platform.base import Platform as BasePlatform
 from cquptddl.service.homework.platform.base.utils import login_from_platform_account
 
@@ -23,7 +24,9 @@ class Xzcy(BasePlatform):
     auth_method = AuthMethod.CQUPT_IDS
 
     @classmethod
-    async def login(cls, client: AsyncClient):
+    async def login(
+        cls, client: AsyncClient, user: User, credentials: IDSLoginInput
+    ) -> dict[str, str]:  # ty: ignore[invalid-method-override]
         """
         Raises: cquptddl.exc.LoginFailed"""
         resp = await client.get(LOGIN_ENTRYPOINT_URL, follow_redirects=True)
@@ -43,14 +46,16 @@ class Xzcy(BasePlatform):
         # except fuckids.LoginFailed as e:
         #     raise LoginFailed(str(e)) from e
 
-        redirect_url = await login_from_platform_account(service)
+        redirect_url = await login_from_platform_account(user, service)
 
         resp = await client.get(redirect_url, follow_redirects=True)
         if resp.url.path != "/user/index":
             raise LoginFailed("学在重邮登录失败")
 
+        return dict(client.cookies)
+
     @classmethod
-    async def get_homework(cls, client: AsyncClient) -> list[Homework]:
+    async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
         try:
             resp = await client.get(TODO_URL)
             resp.raise_for_status()
@@ -58,8 +63,9 @@ class Xzcy(BasePlatform):
             return [
                 Homework(
                     id=Homework.generate_id(
-                        cls.name, item["course_name"], item["title"]
+                        user.id, cls.name, item["course_name"], item["title"]
                     ),
+                    user_id=user.id,
                     course_name=item["course_name"],
                     title=item["title"],
                     url=HOMEWORK_DETAIL_URL.format(

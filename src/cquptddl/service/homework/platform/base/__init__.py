@@ -1,10 +1,16 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from logging import getLogger
+from typing import Any, ClassVar
 
 from httpx import AsyncClient
 from httpx._types import CookieTypes
 
-from cquptddl.model.db.homework import AuthMethod, Homework, PlatformEnum
+from cquptddl.model.db import User
+from cquptddl.model.db.homework import Homework
+from cquptddl.model.schema.platform_auth import AllAuthInputs, AuthMethod, PlatformEnum
+
+logger = getLogger(__name__)
 
 
 class Platform(ABC):
@@ -15,17 +21,22 @@ class Platform(ABC):
     auth_method: AuthMethod
     """认证方式"""
 
-    _platforms: dict[PlatformEnum, Platform] = {}  # noqa: RUF012
+    _platforms: ClassVar[dict[PlatformEnum, type[Platform]]] = {}
     """目前注册的所有平台"""
 
     @classmethod
     @abstractmethod
-    async def login(cls, client: AsyncClient, *args, **kw):
-        """平台登录"""
+    async def login(
+        cls, client: AsyncClient, user: User, credentials: AllAuthInputs
+    ) -> Any:
+        """平台登录
+        Returns:
+            cookies: 一般是最小token，因平台而异
+        """
 
     @classmethod
     @abstractmethod
-    async def get_homework(cls, client: AsyncClient) -> Iterable[Homework]:
+    async def get_homework(cls, client: AsyncClient, user: User) -> Iterable[Homework]:
         """获取作业"""
 
     @classmethod
@@ -34,11 +45,11 @@ class Platform(ABC):
         """检查cookie是否有效"""
 
     @classmethod
-    def get_platform_by_name(cls, name: PlatformEnum) -> Platform:
+    def get_platform_by_name(cls, name: PlatformEnum) -> type[Platform]:
         return cls._platforms[name]
 
     def __init_subclass__(cls, **k):
         super().__init_subclass__(**k)
         if not hasattr(cls, "name") or not hasattr(cls, "auth_method"):
             raise SyntaxError(f"子类{cls}未定义要求的字段")
-        cls._platforms[cls.name] = cls  # ty: ignore[invalid-assignment]
+        cls._platforms[cls.name] = cls

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import UUID5, BaseModel, Field
 
-from cquptddl.model.db.homework import PlatformEnum
+from cquptddl.model.schema.platform_auth import PlatformEnum
 
 
 class Homework(BaseModel):
@@ -41,3 +41,7 @@ class HomeworkResponse(BaseModel):
     count: int
     last_refresh_time: datetime
     homeworks: list[Homework]
+
+
+class HomeworkCompleteInput(BaseModel):
+    is_complete: bool

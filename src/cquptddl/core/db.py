@@ -13,12 +13,6 @@ async def _migrate_db():
         await conn.run_sync(SQLModel.metadata.create_all)
 
 
-async def get_session():
-    async with _session_maker() as session:
-        yield session
-        await session.commit()
-
-
 # def auto_session[**P, T](func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
 #     @functools.wraps(func)
 #     async def wrapper(*args, **kw) -> Any:

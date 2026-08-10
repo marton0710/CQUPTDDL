@@ -5,7 +5,8 @@ from httpx import AsyncClient
 from httpx._types import CookieTypes
 
 from cquptddl.model.db.homework import Homework
-from cquptddl.service.homework.platform.base import AuthMethod, PlatformEnum
+from cquptddl.model.db.user import User
+from cquptddl.model.schema.platform_auth import AuthMethod, IDSLoginInput, PlatformEnum
 from cquptddl.service.homework.platform.base import Platform as BasePlatform
 from cquptddl.service.homework.platform.base.utils import login_from_platform_account
 
@@ -24,7 +25,9 @@ class Yuketang(BasePlatform):
     auth_method = AuthMethod.CQUPT_IDS
 
     @classmethod
-    async def login(cls, client: AsyncClient):
+    async def login(
+        cls, client: AsyncClient, user: User, credentials: IDSLoginInput
+    ) -> dict[str, str]:  # ty:ignore[invalid-method-override]
         # try:
         #     redirect_url, _ = await fuckids.password_login_async(
         #         IDSLOGIN_SERVICE_URL, username, password, client=client
@@ -37,7 +40,7 @@ class Yuketang(BasePlatform):
         #     else:
         #         raise LoginFailed(f"缺少参数： {e.keys}")
 
-        redirect_url = await login_from_platform_account(IDSLOGIN_SERVICE_URL)
+        redirect_url = await login_from_platform_account(user, IDSLOGIN_SERVICE_URL)
 
         await client.get(redirect_url, follow_redirects=True)
 
@@ -46,12 +49,14 @@ class Yuketang(BasePlatform):
         del client.cookies["sessionid"]
         client.cookies["sessionid"] = sessionid
 
+        return dict(client.cookies)
+
     @classmethod
-    async def get_homework(cls, client: AsyncClient) -> list[Homework]:
+    async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
         courses = await cls._get_course(client)
         homeworks = []
         for cn, cid in courses.items():
-            homeworks.extend(await cls._get_course_homeworks(client, cn, cid))
+            homeworks.extend(await cls._get_course_homeworks(client, user, cn, cid))
         return homeworks
 
     @classmethod
@@ -88,7 +93,7 @@ class Yuketang(BasePlatform):
 
     @classmethod
     async def _get_course_homeworks(
-        cls, client: AsyncClient, course_name: str, classroom_id: int
+        cls, client: AsyncClient, user: User, course_name: str, classroom_id: int
     ):
         payload = (
             (
@@ -105,7 +110,10 @@ class Yuketang(BasePlatform):
                 ddl_timestamp = item["deadline"] // 1000
                 homeworks.append(
                     Homework(
-                        id=Homework.generate_id(cls.name, course_name, item["title"]),
+                        id=Homework.generate_id(
+                            user.id, cls.name, course_name, item["title"]
+                        ),
+                        user_id=user.id,
                         course_name=course_name,
                         title=item["title"],
                         deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()
@@ -121,7 +129,10 @@ class Yuketang(BasePlatform):
                 ddl_timestamp = item["content"]["score_d"] // 1000
                 homeworks.append(
                     Homework(
-                        id=Homework.generate_id(cls.name, course_name, item["title"]),
+                        id=Homework.generate_id(
+                            user.id, cls.name, course_name, item["title"]
+                        ),
+                        user_id=user.id,
                         course_name=course_name,
                         title=item["title"],
                         deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()

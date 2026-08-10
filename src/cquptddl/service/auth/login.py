@@ -15,25 +15,25 @@ async def password_login(
         name
     """
     uid, name, cookies = await ids.password_login(username, password)
-    if not (user := await User.from_uid(session, uid)):
-        user = User(
+    await session.merge(
+        User(
             id=uid, password=crypto.aes_encrypt(password), ids_cookie=cookies, name=name
         )
-        session.add(user)
+    )
 
     return crypto.generate_token(uid, False), crypto.generate_token(uid, True), name
 
 
-async def relogin(session: AsyncSession, user: User):
+async def relogin(user: User):
     if user.password is None:
-        raise  # TODO
+        raise  # TODO:
     password = crypto.aes_decrypt(user.password)
-    _, _, user.ids_cookie = await ids.password_login(user.id, password)
+    await ids.password_login(user.id, password)
 
 
 async def get_user_from_token(session: AsyncSession, token: str) -> User:
     uid = crypto.validate_token(token)
-    user = await User.from_uid(session, uid)
+    user = await session.get(User, uid)
     assert user
     return user
 

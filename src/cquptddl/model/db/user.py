@@ -1,4 +1,3 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import JSON, Field, SQLModel
 
 
@@ -10,11 +9,3 @@ class User(SQLModel, table=True):
     email: str | None = None
     qqchan_id: str | None = None
     meetschedule_key: str | None = Field(None, unique=True)
-
-    @classmethod
-    async def from_uid(
-        cls,
-        session: AsyncSession,
-        uid: str,
-    ) -> User | None:
-        return await session.get(cls, uid)
