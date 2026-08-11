@@ -26,3 +26,28 @@ class InvalidToken(CquptddlException):
 
 class ExpiredToken(InvalidToken):
     detail = "token已过期"
+
+
+class UserReloginRequired(CquptddlException):
+    status = 401
+    detail = "需要手动重新登录"
+
+
+class NoSuchHomework(CquptddlException):
+    status = 404
+    detail = "你没有此id的作业"
+
+
+class RefreshCoolingDown(CquptddlException):
+    status = 429
+    detail = "刷新作业还在冷却中，请稍后再试"
+
+
+class InvalidPlatformCredential(CquptddlException):
+    status = 422
+    detail = "平台凭据格式不正确"
+
+
+class PlatformNotBound(CquptddlException):
+    status = 428
+    detail = "请先绑定该平台"

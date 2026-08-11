@@ -23,6 +23,7 @@ dependencies = [
     "pyjwt>=2.12.1",
     "sqlmodel>=0.0.38",
     "uvicorn>=0.46.0",
+    "abxbus>=2.5.45",
 ]
 
 [[tool.uv.index]]

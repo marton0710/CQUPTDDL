@@ -1,6 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from cquptddl import core
+from cquptddl.exc import UserReloginRequired
 from cquptddl.model.db.user import User
+from cquptddl.model.event import UserReloginRequiredEvent
 
 from . import crypto, ids
 
@@ -25,8 +28,13 @@ async def password_login(
 
 
 async def relogin(user: User):
+    """
+    Raises:
+        UserReloginRequired: 使用扫码登录时，无法自动重新登录，需要用户手动登录
+    """
     if user.password is None:
-        raise  # TODO:
+        core.bus.emit(UserReloginRequiredEvent(uid=user.id))
+        raise UserReloginRequired
     password = crypto.aes_decrypt(user.password)
     await ids.password_login(user.id, password)
 

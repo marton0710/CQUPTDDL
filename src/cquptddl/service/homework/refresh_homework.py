@@ -5,6 +5,7 @@ from sqlmodel import delete, select
 
 from cquptddl import core
 from cquptddl.core import config
+from cquptddl.exc import RefreshCoolingDown
 from cquptddl.model.db import Homework, LastRefreshTime, User
 from cquptddl.model.schema.platform_auth import PlatformEnum
 
@@ -12,6 +13,12 @@ from . import platform
 
 
 async def refresh_homework(user: User, platform_name: PlatformEnum):
+    """
+    Raises:
+        RefreshCoolingDown: 刷新作业还在冷却中
+        PlatformNotBound: 用户未绑定该平台
+    """
+    # XXX: 现在冷却中的异常是没有任何途径让用户知道的
     async for session in core.factory.get_session():
         await _check_platform_fetch_cool_down(user, session, platform_name)
 
@@ -61,5 +68,5 @@ async def _check_platform_fetch_cool_down(
     if now - last_refresh_time.last_refreshed_homework < timedelta(
         seconds=config.homework_cooldown_ttl
     ):
-        raise  # TODO:
+        raise RefreshCoolingDown
     last_refresh_time.last_refreshed_homework = now
