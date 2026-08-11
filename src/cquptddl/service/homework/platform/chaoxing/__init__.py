@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from logging import getLogger
+from logging import INFO, getLogger
 
 from httpx import AsyncClient
 from httpx._types import CookieTypes
@@ -19,6 +19,7 @@ from .urls import LOGIN_URL, NOTICE_URL
 from .utils import encryptByAES
 
 logger = getLogger(__name__)
+logger.setLevel(INFO)
 
 
 class Chaoxing(BasePlatform):

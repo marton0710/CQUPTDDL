@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from logging import getLogger
+from logging import INFO, getLogger
 from typing import Any, ClassVar
 
 from httpx import AsyncClient
@@ -11,6 +11,7 @@ from cquptddl.model.db.homework import Homework
 from cquptddl.model.schema.platform_auth import AllAuthInputs, AuthMethod, PlatformEnum
 
 logger = getLogger(__name__)
+logger.setLevel(INFO)
 
 
 class Platform(ABC):
