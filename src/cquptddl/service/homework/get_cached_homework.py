@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import delete, select
 
 from cquptddl.model.db import Homework, LastRefreshTime, User
 from cquptddl.model.schema.platform_auth import PlatformEnum
@@ -45,3 +45,10 @@ async def get_last_refresh_time(
         stmt = stmt.where(LastRefreshTime.platform == platform_name)
     resp = await session.execute(stmt)
     return resp.scalar_one() or datetime.fromtimestamp(0).astimezone()
+
+
+async def delete_platform_homework(
+    session: AsyncSession, user: User, platform_name: PlatformEnum
+):
+    stmt = delete(Homework).where(Homework.platform == platform_name)  # ty: ignore[invalid-argument-type]
+    await session.execute(stmt)

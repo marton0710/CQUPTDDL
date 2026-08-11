@@ -19,6 +19,9 @@ async def password_login(
         uid: 统一认证码
         name: 姓名
         cookies: 登录时下发的cookies
+
+    Raises:
+        LoginFailed
     """
     try:
         _, ctx = await fuckids.password_login_async(

@@ -70,6 +70,14 @@ async def fetch_homework(
     return homeworks
 
 
+async def unbind(session: AsyncSession, user: User, platform_name: PlatformEnum):
+    cookies_obj = await session.get(PlatformCookies, (user.id, platform_name))
+    if cookies_obj is not None:
+        await session.delete(cookies_obj)
+    await core.call("homework.delete_platform_homework", session, user, platform_name)
+
+
 core.export("homework.platform.get_auth_method", get_auth_method)
 core.export("homework.platform.bind", bind)
 core.export("homework.platform.valid_cookie", valid_cookie)
+core.export("homework.platform.unbind", unbind)

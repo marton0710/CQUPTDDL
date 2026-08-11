@@ -18,7 +18,7 @@ async def refresh_homework(user: User, platform_name: PlatformEnum):
         RefreshCoolingDown: 刷新作业还在冷却中
         PlatformNotBound: 用户未绑定该平台
     """
-    # XXX: 现在冷却中的异常是没有任何途径让用户知道的
+    # XXX: 现在冷却中的异常是没有任何途径让用户知道的，用户没有绑定的异常也会被吞掉
     async for session in core.factory.get_session():
         await _check_platform_fetch_cool_down(user, session, platform_name)
 
