@@ -8,6 +8,9 @@ from cquptddl import core
 from cquptddl.middleware.auth import need_login
 from cquptddl.model.db import User
 from cquptddl.model.schema.homework import (
+    Homework as HomeworkSchema,
+)
+from cquptddl.model.schema.homework import (
     HomeworkCompleteInput,
     HomeworkResponse,
 )
@@ -23,15 +26,29 @@ router = APIRouter()
 @router.get("")
 async def _(
     user: Annotated[User, Depends(need_login)],
+    session: Annotated[AsyncSession, Depends(core.factory.get_session)],
     num: Annotated[int, Query(ge=1, le=30)] = 10,
     page: Annotated[int, Query(ge=1)] = 1,
     platform: Annotated[PlatformEnum | None, Query()] = None,
 ) -> HomeworkResponse:
-    pass
+    homeworks = await core.call(
+        "homework.get_cached_homework", session, user, platform, num, page
+    )
+    resp = HomeworkResponse(
+        homeworks=[HomeworkSchema.model_validate(i.model_dump()) for i in homeworks],
+        count=await core.call(
+            "homework.get_cached_homework_count", session, user, platform
+        ),
+        last_refresh_time=await core.call(
+            "homework.get_last_refresh_time", session, user, platform
+        ),
+    )
+    # await refresh(user, platform)
+    return resp
 
 
 @router.post("/refresh", status_code=202)
-async def _(
+async def refresh(
     user: Annotated[User, Depends(need_login)],
     platform: Annotated[PlatformEnum | None, Query()] = None,
 ):
