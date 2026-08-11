@@ -87,7 +87,7 @@ async def _(
     platform_name: PlatformEnum,
     credentials: AllAuthInputs,
 ):
-    await core.call("homework.platform.bind", session, user, platform_name, credentials)
+    await core.call("homework.platform.bind", user, session, platform_name, credentials)
 
 
 @router.post("/platform/{platform_name}/unbind", status_code=204)
@@ -96,7 +96,7 @@ async def _(
     session: Annotated[AsyncSession, Depends(core.get_session)],
     platform_name: PlatformEnum,
 ):
-    return await core.call("homework.platform.unbind", user, session, platform_name)
+    return await core.call("homework.platform.unbind", session, user, platform_name)
 
 
 @router.get("/platform/{platform_name}/valid_cookie")
