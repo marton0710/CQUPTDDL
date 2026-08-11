@@ -36,7 +36,7 @@ async def relogin(user: User):
         core.bus.emit(UserReloginRequiredEvent(uid=user.id))
         raise UserReloginRequired
     password = crypto.aes_decrypt(user.password)
-    await ids.password_login(user.id, password)
+    _, _, user.ids_cookie = await ids.password_login(user.id, password)
 
 
 async def get_user_from_token(session: AsyncSession, token: str) -> User:
