@@ -2,9 +2,7 @@ from datetime import datetime
 from logging import INFO, getLogger
 from urllib.parse import parse_qs
 
-import httpx
 from httpx import AsyncClient, HTTPStatusError
-from httpx._types import CookieTypes
 
 from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie, LoginFailed
@@ -73,6 +71,6 @@ class Xzcy(BasePlatform):
         ]
 
     @classmethod
-    async def valid_cookie(cls, cookie_dict: CookieTypes) -> bool:
-        async with httpx.AsyncClient(cookies=cookie_dict) as client:
+    async def valid_cookie(cls, cookies: dict[str, str]) -> bool:  # ty: ignore[invalid-return-type]
+        async for client in core.factory.get_client(cookies=cookies):
             return (await client.get(TODO_URL)).status_code == 200

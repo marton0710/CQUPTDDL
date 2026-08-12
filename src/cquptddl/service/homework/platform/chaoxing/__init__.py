@@ -3,7 +3,6 @@ from datetime import datetime
 from logging import INFO, getLogger
 
 from httpx import AsyncClient, HTTPStatusError
-from httpx._types import CookieTypes
 
 from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie, LoginFailed
@@ -108,6 +107,6 @@ class Chaoxing(BasePlatform):
         return homeworks
 
     @classmethod
-    async def valid_cookie(cls, cookie_dict: CookieTypes) -> bool:  # ty: ignore[invalid-return-type]
-        async for client in core.factory.get_client(cookies=cookie_dict):
+    async def valid_cookie(cls, cookies: dict[str, str]) -> bool:  # ty: ignore[invalid-return-type]
+        async for client in core.factory.get_client(cookies=cookies):
             return (await client.get(NOTICE_URL)).status_code == 200

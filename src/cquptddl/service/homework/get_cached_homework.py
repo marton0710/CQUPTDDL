@@ -17,7 +17,9 @@ async def get_cached_homework(
     num: int = -1,
     page: int = 1,
 ) -> Iterable[Homework]:
-    stmt = select(Homework).where(Homework.user_id == user.id).order_by(Homework.id)  # ty: ignore[invalid-argument-type]
+    stmt = (
+        select(Homework).where(Homework.user_id == user.id).order_by(Homework.deadline)  # ty: ignore[invalid-argument-type]
+    )
     if platform_name is not None:
         stmt = stmt.where(Homework.platform == platform_name)
     if num >= 0:

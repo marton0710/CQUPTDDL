@@ -1,9 +1,7 @@
 from datetime import datetime
 from logging import INFO, getLogger
 
-import httpx
 from httpx import AsyncClient, HTTPStatusError
-from httpx._types import CookieTypes
 
 from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie
@@ -60,16 +58,16 @@ class Yuketang(BasePlatform):
         return homeworks
 
     @classmethod
-    async def valid_cookie(cls, cookie_dict: CookieTypes) -> bool:
+    async def valid_cookie(cls, cookies: dict[str, str]) -> bool:  # ty: ignore[invalid-return-type]
         """
         验证cookie的合理性
         """
         url = GET_COURSES_URL
-        async with httpx.AsyncClient(
+        async for client in core.factory.get_client(
             headers={"User-Agent": UA},
-            cookies=cookie_dict,
+            cookies=cookies,
             timeout=10,
-        ) as client:
+        ):
             return (await client.get(url=url)).status_code == 200
 
     @staticmethod

@@ -22,7 +22,7 @@ async def password_login(
         name
 
     Raises:
-        LoginFailed
+        LoginFailed:
     """
     uid, name, cookies = await ids.password_login(username, password)
     old_user = await session.get(User, uid)

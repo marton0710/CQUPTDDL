@@ -51,6 +51,11 @@ async def refresh_homework(
 async def _check_platform_fetch_cool_down(
     user: User, session: AsyncSession, platform_name: PlatformEnum
 ):
+    """
+    Raises:
+        PlatformNotBound:
+        RefreshCoolingDown:
+    """
     now = datetime.now()  # ruff: ignore[DTZ005]
     if (
         platform_info_obj := await session.get(PlatformInfo, (user.id, platform_name))

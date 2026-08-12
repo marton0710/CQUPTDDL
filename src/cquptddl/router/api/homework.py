@@ -36,10 +36,14 @@ logger.setLevel(INFO)
 async def _(
     user: Annotated[User, Depends(need_login)],
     session: Annotated[AsyncSession, Depends(core.factory.get_session)],
-    num: Annotated[int, Query(ge=1, le=30)] = 10,
+    num: Annotated[int, Query(ge=-1, le=30)] = -1,
     page: Annotated[int, Query(ge=1)] = 1,
     platform: Annotated[PlatformEnum | None, Query()] = None,
 ) -> HomeworkResponse:
+    """
+    Args:
+        num: 一页的作业数量，-1为所有作业
+    """
     homeworks = await core.call(
         "homework.get_cached_homework", session, user, platform, num, page
     )

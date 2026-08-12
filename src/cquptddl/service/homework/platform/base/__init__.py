@@ -4,7 +4,6 @@ from logging import INFO, getLogger
 from typing import ClassVar
 
 from httpx import AsyncClient
-from httpx._types import CookieTypes
 
 from cquptddl.model.db import User
 from cquptddl.model.db.homework import Homework
@@ -47,7 +46,7 @@ class Platform(ABC):
 
     @classmethod
     @abstractmethod
-    async def valid_cookie(cls, cookie_dict: CookieTypes) -> bool:
+    async def valid_cookie(cls, cookies: dict[str, str]) -> bool:
         """检查cookie是否有效"""
 
     @classmethod
