@@ -1,11 +1,14 @@
 from collections.abc import Iterable
+from logging import INFO, getLogger
 
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
-from cquptddl.core import get_client
-from cquptddl.exc import InvalidPlatformCredentialFormat, PlatformNotBound
+from cquptddl.exc import (
+    InvalidPlatformCookie,
+    InvalidPlatformCredentialFormat,
+    PlatformNotBound,
+)
 from cquptddl.model.db import Homework, PlatformCookies
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.platform_auth import (
@@ -19,7 +22,9 @@ from .chaoxing import Chaoxing
 from .xzcy import Xzcy
 from .yuketang import Yuketang
 
-__all__ = ["Chaoxing", "Xzcy", "Yuketang", "bind", "get_auth_method"]
+__all__ = ["Chaoxing", "Xzcy", "Yuketang"]
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
 
 
 def get_auth_method(platform_name: PlatformEnum) -> AuthMethod:
@@ -35,11 +40,34 @@ async def bind(
     platform = Platform.get_platform_by_name(platform_name)
     if not isinstance(credentials, platform.auth_method.model_class):
         raise InvalidPlatformCredentialFormat
-    async with AsyncClient() as client:
+    async for client in core.factory.get_client():
         cookies = await platform.login(client, user, credentials)
-    await session.merge(
-        PlatformCookies(user_id=user.id, platform=platform_name, cookies=cookies)
+    credentials_to_save = core.symbol.call(
+        "crypto.aes_encrypt", credentials.model_dump_json()
     )
+    await session.merge(
+        PlatformCookies(
+            user_id=user.id,
+            platform=platform_name,
+            credentials=credentials_to_save,
+            cookies=cookies,
+        )
+    )
+
+
+async def relogin(
+    session: AsyncSession, user: User, platform_name: PlatformEnum
+) -> dict[str, str]:
+    cookies_obj = await session.get(PlatformCookies, (user.id, platform_name))
+    assert cookies_obj is not None
+    platform = Platform.get_platform_by_name(platform_name)
+    credentials = AuthMethod(platform.auth_method).model_class.model_validate_json(
+        core.symbol.call("crypto.aes_decrypt", cookies_obj.credentials)
+    )
+    async for client in core.factory.get_client():
+        new_cookies = await platform.login(client, user, credentials)
+    cookies_obj.cookies = new_cookies
+    return new_cookies
 
 
 async def valid_cookie(
@@ -64,9 +92,15 @@ async def fetch_homework(
     cookies_model = await session.get(PlatformCookies, (user.id, platform_name))
     if cookies_model is None:
         raise PlatformNotBound
-    async for client in get_client(cookies=cookies_model.cookies):
-        platform = Platform.get_platform_by_name(platform_name)
-        homeworks = await platform.get_homework(client, user)
+    platform = Platform.get_platform_by_name(platform_name)
+    try:
+        homeworks = await platform.get_homework(cookies_model.cookies, user)
+    except InvalidPlatformCookie:
+        _logger.debug(
+            "用户%s在平台%s的token已过期，正在重新登录", user.id, platform_name
+        )
+        cookies = await relogin(session, user, platform_name)
+        homeworks = await platform.get_homework(cookies, user)
     return homeworks
 
 

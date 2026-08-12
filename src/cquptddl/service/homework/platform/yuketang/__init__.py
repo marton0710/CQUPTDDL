@@ -5,6 +5,7 @@ import httpx
 from httpx import AsyncClient, HTTPStatusError
 from httpx._types import CookieTypes
 
+from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.db.user import User
@@ -20,8 +21,8 @@ from .urls import (
 )
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0"
-logger = getLogger(__name__)
-logger.setLevel(INFO)
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
 
 
 class Yuketang(BasePlatform):
@@ -43,16 +44,19 @@ class Yuketang(BasePlatform):
         return {"sessionid": sessionid}
 
     @classmethod
-    async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
-        try:
-            courses = await cls._get_course(client)
-            homeworks = []
-            for cn, cid in courses.items():
-                homeworks.extend(await cls._get_course_homeworks(client, user, cn, cid))
-        except HTTPStatusError as e:
-            exc = InvalidPlatformCookie()
-            logger.error("雨课堂cookie无效", exc_info=exc)
-            raise exc from e
+    async def get_homework(cls, cookies: dict[str, str], user: User) -> list[Homework]:
+        async for client in core.factory.get_client(cookies=cookies):
+            try:
+                courses = await cls._get_course(client)
+                homeworks: list[Homework] = []
+                for cn, cid in courses.items():
+                    homeworks.extend(
+                        await cls._get_course_homeworks(client, user, cn, cid)
+                    )
+            except HTTPStatusError as e:
+                exc = InvalidPlatformCookie()
+                _logger.error("雨课堂cookie无效", exc_info=exc)
+                raise exc from e
         return homeworks
 
     @classmethod

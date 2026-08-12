@@ -5,6 +5,7 @@ from logging import INFO, getLogger
 from httpx import AsyncClient, HTTPStatusError
 from httpx._types import CookieTypes
 
+from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie, LoginFailed
 from cquptddl.model.db import User
 from cquptddl.model.db.homework import Homework
@@ -18,9 +19,9 @@ from cquptddl.service.homework.platform.base import Platform as BasePlatform
 from .urls import LOGIN_URL, NOTICE_URL
 from .utils import encryptByAES
 
-logger = getLogger(__name__)
-logger.setLevel(INFO)
-logger_for_unknown_inbox = getLogger(__name__ + ":unknown-inbox")
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
+_logger_for_unknown_inbox = getLogger(__name__ + ":unknown-inbox")
 
 
 class Chaoxing(BasePlatform):
@@ -59,17 +60,18 @@ class Chaoxing(BasePlatform):
         return dict(client.cookies)
 
     @classmethod
-    async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
-        try:
-            data = (
-                (await client.get(NOTICE_URL))
-                .raise_for_status()
-                .json()["notices"]["list"]
-            )
-        except HTTPStatusError as e:
-            exc = InvalidPlatformCookie()
-            logger.error("学习通cookie无效", exc_info=exc)
-            raise exc from e
+    async def get_homework(cls, cookies: dict[str, str], user: User) -> list[Homework]:
+        async for client in core.factory.get_client(cookies=cookies):
+            try:
+                data = (
+                    (await client.get(NOTICE_URL))
+                    .raise_for_status()
+                    .json()["notices"]["list"]
+                )
+            except HTTPStatusError as e:
+                exc = InvalidPlatformCookie()
+                _logger.error("学习通cookie无效", exc_info=exc)
+                raise exc from e
         homeworks: list[Homework] = []
         for item in data:
             try:
@@ -78,42 +80,34 @@ class Chaoxing(BasePlatform):
                     continue
 
                 hmw_info = msg_info["content"]
+                _logger.debug("作业详情：%s", hmw_info)
                 hmw_url = json.loads(item["attachment"])[0]["att_web"]["url"]
-                homeworks.append(
-                    Homework(
-                        id=Homework.generate_id(
-                            user.id, cls.name, hmw_info["courseName"], hmw_info["title"]
-                        ),
-                        user_id=user.id,
-                        title=hmw_info["title"],
-                        deadline=datetime.fromtimestamp(
-                            int(hmw_info["endTime"]) / 1000
-                        ).astimezone(),
-                        course_name=hmw_info["courseName"],
-                        url=hmw_url,
-                        platform=cls.name,
-                    )
-                )
-            except Exception:  # noqa: BLE001
-                logger_for_unknown_inbox.warning(
+            except Exception as e:  # noqa: BLE001
+                _logger_for_unknown_inbox.warning(
                     "发现未知的收件箱：%s", json.dumps(item)
                 )
+                _logger_for_unknown_inbox.debug("详细报错如下：", exc_info=e)
                 continue
-                # homeworks.append(
-                #     Homework(
-                #         id=Homework.generate_id(
-                #             cls.name, "警告", f"发现未知的收件箱：{json.dumps(item)}"
-                #         ),
-                #         title=f"发现未知的收件箱：{json.dumps(item)}",
-                #         deadline=None,
-                #         course_name="警告",
-                #         url="about:blank",
-                #         platform=cls.name,
-                #     )
-                # )
+            homeworks.append(
+                Homework(
+                    id=Homework.generate_id(
+                        user.id, cls.name, hmw_info["courseName"], hmw_info["title"]
+                    ),
+                    user_id=user.id,
+                    title=hmw_info["title"],
+                    deadline=datetime.fromtimestamp(
+                        int(hmw_info["endTime"]) / 1000
+                    ).astimezone()
+                    if hmw_info["endTime"]
+                    else None,
+                    course_name=hmw_info["courseName"],
+                    url=hmw_url,
+                    platform=cls.name,
+                )
+            )
         return homeworks
 
     @classmethod
-    async def valid_cookie(cls, cookie_dict: CookieTypes) -> bool:
-        async with AsyncClient(cookies=cookie_dict) as client:
+    async def valid_cookie(cls, cookie_dict: CookieTypes) -> bool:  # ty: ignore[invalid-return-type]
+        async for client in core.factory.get_client(cookies=cookie_dict):
             return (await client.get(NOTICE_URL)).status_code == 200

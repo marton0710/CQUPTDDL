@@ -29,7 +29,7 @@ class Platform(ABC):
     @abstractmethod
     async def login(
         cls, client: AsyncClient, user: User, credentials: AllAuthInputs
-    ) -> Any:
+    ) -> dict[str, str]:
         """平台登录
         Returns:
             cookies: 一般是最小token，因平台而异
@@ -37,7 +37,9 @@ class Platform(ABC):
 
     @classmethod
     @abstractmethod
-    async def get_homework(cls, client: AsyncClient, user: User) -> Iterable[Homework]:
+    async def get_homework(
+        cls, cookies: dict[str, str], user: User
+    ) -> Iterable[Homework]:
         """获取作业
         Raises:
             InvalidPlatformCookie: 平台cookie无效

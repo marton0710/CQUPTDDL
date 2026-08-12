@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     homework_cache_jitter: int = 30 * 60
 
     # 请求冷却时间
-    homework_cooldown_ttl: int = 30
+    homework_cooldown_ttl: int = 30 * 60
 
     # JWT相关
     SECRET_KEY: str

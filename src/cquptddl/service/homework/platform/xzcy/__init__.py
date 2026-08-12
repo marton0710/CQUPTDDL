@@ -6,7 +6,8 @@ import httpx
 from httpx import AsyncClient, HTTPStatusError
 from httpx._types import CookieTypes
 
-from cquptddl.exc import CquptddlException, InvalidPlatformCookie, LoginFailed
+from cquptddl import core
+from cquptddl.exc import InvalidPlatformCookie, LoginFailed
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.platform_auth import AuthMethod, IDSLoginInput, PlatformEnum
@@ -19,8 +20,8 @@ from .urls import (
     TODO_URL,
 )
 
-logger = getLogger(__name__)
-logger.setLevel(INFO)
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
 
 
 class Xzcy(BasePlatform):
@@ -44,34 +45,32 @@ class Xzcy(BasePlatform):
         return dict(client.cookies)
 
     @classmethod
-    async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
-        try:
+    async def get_homework(cls, cookies: dict[str, str], user: User) -> list[Homework]:
+        async for client in core.factory.get_client(cookies=cookies):
             resp = await client.get(TODO_URL)
             try:
                 resp.raise_for_status()
             except HTTPStatusError as e:
                 exc = InvalidPlatformCookie()
-                logger.error("学在重邮cookie无效", exc_info=exc)
+                _logger.error("学在重邮cookie无效", exc_info=exc)
                 raise exc from e
-            payload: dict = resp.json()["todo_list"]
-            return [
-                Homework(
-                    id=Homework.generate_id(
-                        user.id, cls.name, item["course_name"], item["title"]
-                    ),
-                    user_id=user.id,
-                    course_name=item["course_name"],
-                    title=item["title"],
-                    url=HOMEWORK_DETAIL_URL.format(
-                        course_id=item["course_id"], hmw_id=item["id"]
-                    ),
-                    deadline=datetime.fromisoformat(item["end_time"]),
-                    platform=cls.name,
-                )
-                for item in payload
-            ]
-        except httpx.HTTPStatusError as e:
-            raise CquptddlException(f"获取todo列表失败：{e}") from e
+        payload: dict = resp.json()["todo_list"]
+        return [
+            Homework(
+                id=Homework.generate_id(
+                    user.id, cls.name, item["course_name"], item["title"]
+                ),
+                user_id=user.id,
+                course_name=item["course_name"],
+                title=item["title"],
+                url=HOMEWORK_DETAIL_URL.format(
+                    course_id=item["course_id"], hmw_id=item["id"]
+                ),
+                deadline=datetime.fromisoformat(item["end_time"]),
+                platform=cls.name,
+            )
+            for item in payload
+        ]
 
     @classmethod
     async def valid_cookie(cls, cookie_dict: CookieTypes) -> bool:

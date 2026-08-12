@@ -1,1 +1,1 @@
-from . import auth, homework
+from . import auth, crypto, homework

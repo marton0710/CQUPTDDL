@@ -12,4 +12,5 @@ class PlatformCookies(SQLModel, table=True):
         primary_key=True,
     )
     platform: PlatformEnum = Field(description="平台名称", primary_key=True)
+    credentials: str = Field(description="加密后的平台登录凭据")
     cookies: dict[str, str] = Field(description="平台cookies", sa_type=JSON)

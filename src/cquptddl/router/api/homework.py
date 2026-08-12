@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
-from cquptddl.exc import InvalidPlatformCookie, PlatformNotBound
+from cquptddl.exc import InvalidPlatformCookie, PlatformNotBound, RefreshCoolingDown
 from cquptddl.middleware.auth import need_login
 from cquptddl.model.db import User
 from cquptddl.model.schema.homework import (
@@ -70,7 +70,7 @@ async def refresh(
         for p in PlatformEnum:
             try:
                 await core.call("homework.refresh_homework", session, user, p)
-            except (PlatformNotBound, InvalidPlatformCookie) as e:
+            except (PlatformNotBound, InvalidPlatformCookie, RefreshCoolingDown) as e:
                 prompts.append(
                     REFRESH_HOMEWORK_PROMPT_TEMPLATE.format(platform=p, info=e)
                 )
