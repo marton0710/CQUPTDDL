@@ -47,22 +47,17 @@ async def _(
     return resp
 
 
-@router.post("/refresh", status_code=202)
+@router.post("/refresh", status_code=204)
 async def refresh(
+    session: Annotated[AsyncSession, Depends(core.factory.get_session)],
     user: Annotated[User, Depends(need_login)],
     platform: Annotated[PlatformEnum | None, Query()] = None,
 ):
     if platform is not None:
-        core.task.background(
-            core.call("homework.refresh_homework", user, platform),
-            f"user_{user.id}_refresh_homework",
-        )
+        await core.call("homework.refresh_homework", session, user, platform)
     else:
         for p in PlatformEnum:
-            core.task.background(
-                core.call("homework.refresh_homework", user, p),
-                f"user_{user.id}_refresh_homework",
-            )
+            await core.call("homework.refresh_homework", session, user, p)
 
 
 @router.post("/{id}/complete", status_code=204)
