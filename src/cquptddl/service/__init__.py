@@ -1,1 +1,1 @@
-from . import auth, crypto, homework
+from . import auth, crypto, homework  # noqa: F401

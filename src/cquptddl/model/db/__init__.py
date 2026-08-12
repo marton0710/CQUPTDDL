@@ -1,6 +1,5 @@
-from .cookies import PlatformCookies
 from .homework import Homework
-from .last_refresh_time import LastRefreshTime
+from .platform_info import PlatformInfo
 from .user import User
 
-__all__ = ["Homework", "LastRefreshTime", "PlatformCookies", "User"]
+__all__ = ["Homework", "LastRefreshTime", "PlatformCookies", "PlatformInfo", "User"]

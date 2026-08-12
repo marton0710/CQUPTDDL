@@ -5,7 +5,8 @@ from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
-from cquptddl.model.db import Homework, LastRefreshTime, User
+from cquptddl.model.db import Homework, User
+from cquptddl.model.db.platform_info import PlatformInfo
 from cquptddl.model.schema.platform_auth import PlatformEnum
 
 
@@ -38,11 +39,11 @@ async def get_cached_homework_count(
 async def get_last_refresh_time(
     session: AsyncSession, user: User, platform_name: PlatformEnum | None = None
 ) -> datetime:
-    stmt = select(func.max(LastRefreshTime.last_refreshed_homework)).where(
-        LastRefreshTime.user_id == user.id
+    stmt = select(func.max(PlatformInfo.last_refreshed_homework)).where(
+        PlatformInfo.user_id == user.id
     )  # XXX: max还是min还是什么存在争议，因为作业不一定是同时刷新
     if platform_name is not None:
-        stmt = stmt.where(LastRefreshTime.platform == platform_name)
+        stmt = stmt.where(PlatformInfo.platform == platform_name)
     resp = await session.execute(stmt)
     return resp.scalar_one() or datetime.fromtimestamp(0).astimezone()
 

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from logging import INFO, getLogger
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from httpx import AsyncClient
 from httpx._types import CookieTypes

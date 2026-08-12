@@ -4,8 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 from cquptddl.core import config
-from cquptddl.exc import RefreshCoolingDown
-from cquptddl.model.db import Homework, LastRefreshTime, User
+from cquptddl.exc import PlatformNotBound, RefreshCoolingDown
+from cquptddl.model.db import Homework, User
+from cquptddl.model.db.platform_info import PlatformInfo
 from cquptddl.model.schema.platform_auth import PlatformEnum
 
 from . import platform
@@ -52,20 +53,11 @@ async def _check_platform_fetch_cool_down(
 ):
     now = datetime.now()  # ruff: ignore[DTZ005]
     if (
-        last_refresh_time := await session.get(
-            LastRefreshTime, (user.id, platform_name)
-        )
+        platform_info_obj := await session.get(PlatformInfo, (user.id, platform_name))
     ) is None:
-        session.add(
-            LastRefreshTime(
-                user_id=user.id,
-                platform=platform_name,
-                last_refreshed_homework=now,
-            )
-        )
-        return
-    if now - last_refresh_time.last_refreshed_homework < timedelta(
+        raise PlatformNotBound
+    if now - platform_info_obj.last_refreshed_homework < timedelta(
         seconds=config.homework_cooldown_ttl
     ):
         raise RefreshCoolingDown
-    last_refresh_time.last_refreshed_homework = now
+    platform_info_obj.last_refreshed_homework = now
