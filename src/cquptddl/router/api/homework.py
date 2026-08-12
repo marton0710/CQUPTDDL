@@ -1,3 +1,5 @@
+import uuid
+from logging import INFO, getLogger
 from typing import Annotated
 from uuid import UUID
 
@@ -5,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
+from cquptddl.exc import InvalidPlatformCookie, PlatformNotBound
 from cquptddl.middleware.auth import need_login
 from cquptddl.model.db import User
 from cquptddl.model.schema.homework import (
@@ -20,7 +23,10 @@ from cquptddl.model.schema.platform_auth import (
 )
 from cquptddl.service.homework.platform.base import AuthMethod
 
+REFRESH_HOMEWORK_PROMPT_TEMPLATE = "{platform}: {info}"
 router = APIRouter()
+logger = getLogger(__name__)
+logger.setLevel(INFO)
 
 
 @router.get("")
@@ -47,17 +53,33 @@ async def _(
     return resp
 
 
-@router.post("/refresh", status_code=204)
+@router.post("/refresh")
 async def refresh(
     session: Annotated[AsyncSession, Depends(core.factory.get_session)],
     user: Annotated[User, Depends(need_login)],
     platform: Annotated[PlatformEnum | None, Query()] = None,
-):
+) -> list[str]:
     if platform is not None:
         await core.call("homework.refresh_homework", session, user, platform)
+        return []
     else:
+        prompts = []
         for p in PlatformEnum:
-            await core.call("homework.refresh_homework", session, user, p)
+            try:
+                await core.call("homework.refresh_homework", session, user, p)
+            except (PlatformNotBound, InvalidPlatformCookie) as e:
+                prompts.append(
+                    REFRESH_HOMEWORK_PROMPT_TEMPLATE.format(platform=p, info=e)
+                )
+            except Exception as e:
+                errcode = uuid.uuid4()
+                logger.error("刷新作业时出现未知异常，异常码：%s", errcode, exc_info=e)
+                prompts.append(
+                    REFRESH_HOMEWORK_PROMPT_TEMPLATE.format(
+                        platform=p, info=f"未知异常，请联系管理员，异常码：{errcode}"
+                    )
+                )
+        return prompts
 
 
 @router.post("/{id}/complete", status_code=204)
