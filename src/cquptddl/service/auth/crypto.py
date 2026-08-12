@@ -1,19 +1,14 @@
-import base64
-import hashlib
 from datetime import UTC, datetime, timedelta
 
 import jwt
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
 
+from cquptddl import core
 from cquptddl.core import config
 from cquptddl.exc import ExpiredToken, InvalidToken
 
-_AES_KEY = hashlib.md5(config.SECRET_KEY.encode()).digest()[:16]
-
 
 def generate_token(uid: str, isrefresh: bool = False) -> str:
-    uidenc = aes_encrypt(uid)
+    uidenc: str = core.symbol.call("crypto.aes_encrypt", uid)
     exp = datetime.now().astimezone(UTC) + timedelta(
         seconds=config.REFRESH_TOKEN_EXPIRE_SECONDS
         if isrefresh
@@ -41,18 +36,4 @@ def validate_token(token: str, isrefresh: bool = False) -> str:
     if decoded_payload["isrefresh"] != isrefresh:
         raise InvalidToken("")
     encrypted_uid = decoded_payload["uid"]
-    return aes_decrypt(encrypted_uid)
-
-
-def aes_encrypt(s: str) -> str:
-    cipher = AES.new(_AES_KEY, AES.MODE_CBC)
-    ciphertext = cipher.encrypt(pad(s.encode(), AES.block_size))
-    return base64.b64encode(bytes(cipher.iv) + ciphertext).decode()
-
-
-def aes_decrypt(c: str) -> str:
-    raw_data = base64.b64decode(c)
-    iv = raw_data[: AES.block_size]
-    ciphertext = raw_data[AES.block_size :]
-    cipher = AES.new(_AES_KEY, AES.MODE_CBC, iv)
-    return unpad(cipher.decrypt(ciphertext), AES.block_size).decode()
+    return core.symbol.call("crypto.aes_decrypt", encrypted_uid)

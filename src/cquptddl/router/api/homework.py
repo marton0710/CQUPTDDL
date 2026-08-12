@@ -24,6 +24,9 @@ from cquptddl.model.schema.platform_auth import (
 from cquptddl.service.homework.platform.base import AuthMethod
 
 REFRESH_HOMEWORK_PROMPT_TEMPLATE = "{platform}: {info}"
+REFRESH_HOMEWORK_UNKNOW_ERROR_PROMPT_TEMPLATE = (
+    "{platform}: 未知异常，请联系管理员，异常码：{errcode}"
+)
 router = APIRouter()
 logger = getLogger(__name__)
 logger.setLevel(INFO)
@@ -75,8 +78,8 @@ async def refresh(
                 errcode = uuid.uuid4()
                 logger.error("刷新作业时出现未知异常，异常码：%s", errcode, exc_info=e)
                 prompts.append(
-                    REFRESH_HOMEWORK_PROMPT_TEMPLATE.format(
-                        platform=p, info=f"未知异常，请联系管理员，异常码：{errcode}"
+                    REFRESH_HOMEWORK_UNKNOW_ERROR_PROMPT_TEMPLATE.format(
+                        platform=p, errcode=errcode
                     )
                 )
         return prompts

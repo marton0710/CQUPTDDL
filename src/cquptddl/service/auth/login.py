@@ -20,7 +20,10 @@ async def password_login(
     uid, name, cookies = await ids.password_login(username, password)
     await session.merge(
         User(
-            id=uid, password=crypto.aes_encrypt(password), ids_cookie=cookies, name=name
+            id=uid,
+            password=core.symbol.call("crypto.aes_encrypt", password),
+            ids_cookie=cookies,
+            name=name,
         )
     )
 
@@ -35,7 +38,7 @@ async def relogin(user: User):
     if user.password is None:
         core.bus.emit(UserReloginRequiredEvent(uid=user.id))
         raise UserReloginRequired
-    password = crypto.aes_decrypt(user.password)
+    password: str = core.symbol.call("crypto.aes_decrypt", user.password)
     _, _, user.ids_cookie = await ids.password_login(user.id, password)
 
 
