@@ -1,9 +1,11 @@
 from datetime import datetime
+from logging import INFO, getLogger
 
 import httpx
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPStatusError
 from httpx._types import CookieTypes
 
+from cquptddl.exc import InvalidPlatformCookie
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.platform_auth import AuthMethod, IDSLoginInput, PlatformEnum
@@ -18,6 +20,8 @@ from .urls import (
 )
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0"
+logger = getLogger(__name__)
+logger.setLevel(INFO)
 
 
 class Yuketang(BasePlatform):
@@ -28,20 +32,7 @@ class Yuketang(BasePlatform):
     async def login(
         cls, client: AsyncClient, user: User, credentials: IDSLoginInput
     ) -> dict[str, str]:  # ty:ignore[invalid-method-override]
-        # try:
-        #     redirect_url, _ = await fuckids.password_login_async(
-        #         IDSLOGIN_SERVICE_URL, username, password, client=client
-        #     )
-        # except DataRequired as e:
-        #     if "captcha" in e.keys:
-        #         raise LoginFailed(
-        #             "需要验证码。请先去统一认证平台登录一次，以去除验证码"
-        #         )
-        #     else:
-        #         raise LoginFailed(f"缺少参数： {e.keys}")
-
         redirect_url = await login_from_platform_account(user, IDSLOGIN_SERVICE_URL)
-
         await client.get(redirect_url, follow_redirects=True)
 
         # 下面3句是为了让 cqupt.yuketang.com 和 changjiang.yuketang.com 共享 cookie
@@ -49,21 +40,25 @@ class Yuketang(BasePlatform):
         del client.cookies["sessionid"]
         client.cookies["sessionid"] = sessionid
 
-        return dict(client.cookies)
+        return {"sessionid": sessionid}
 
     @classmethod
     async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
-        courses = await cls._get_course(client)
-        homeworks = []
-        for cn, cid in courses.items():
-            homeworks.extend(await cls._get_course_homeworks(client, user, cn, cid))
+        try:
+            courses = await cls._get_course(client)
+            homeworks = []
+            for cn, cid in courses.items():
+                homeworks.extend(await cls._get_course_homeworks(client, user, cn, cid))
+        except HTTPStatusError as e:
+            exc = InvalidPlatformCookie()
+            logger.error("雨课堂cookie无效", exc_info=exc)
+            raise exc from e
         return homeworks
 
     @classmethod
     async def valid_cookie(cls, cookie_dict: CookieTypes) -> bool:
         """
         验证cookie的合理性
-        :return:
         """
         url = GET_COURSES_URL
         async with httpx.AsyncClient(

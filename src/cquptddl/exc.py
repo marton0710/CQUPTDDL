@@ -43,7 +43,7 @@ class RefreshCoolingDown(CquptddlException):
     detail = "刷新作业还在冷却中，请稍后再试"
 
 
-class InvalidPlatformCredential(CquptddlException):
+class InvalidPlatformCredentialFormat(CquptddlException):
     status = 422
     detail = "平台凭据格式不正确"
 
@@ -51,3 +51,8 @@ class InvalidPlatformCredential(CquptddlException):
 class PlatformNotBound(CquptddlException):
     status = 428
     detail = "请先绑定该平台"
+
+
+class InvalidPlatformCookie(CquptddlException):
+    status = 401
+    detail = "平台cookie无效，请检查是否已过期"

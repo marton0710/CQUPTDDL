@@ -38,7 +38,10 @@ class Platform(ABC):
     @classmethod
     @abstractmethod
     async def get_homework(cls, client: AsyncClient, user: User) -> Iterable[Homework]:
-        """获取作业"""
+        """获取作业
+        Raises:
+            InvalidPlatformCookie: 平台cookie无效
+        """
 
     @classmethod
     @abstractmethod

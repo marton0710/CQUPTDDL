@@ -2,10 +2,10 @@ import json
 from datetime import datetime
 from logging import INFO, getLogger
 
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPStatusError
 from httpx._types import CookieTypes
 
-from cquptddl.exc import LoginFailed
+from cquptddl.exc import InvalidPlatformCookie, LoginFailed
 from cquptddl.model.db import User
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.schema.platform_auth import (
@@ -59,9 +59,16 @@ class Chaoxing(BasePlatform):
 
     @classmethod
     async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
-        data = (
-            (await client.get(NOTICE_URL)).raise_for_status().json()["notices"]["list"]
-        )
+        try:
+            data = (
+                (await client.get(NOTICE_URL))
+                .raise_for_status()
+                .json()["notices"]["list"]
+            )
+        except HTTPStatusError as e:
+            exc = InvalidPlatformCookie()
+            logger.error("学习通cookie无效", exc_info=exc)
+            raise exc from e
         homeworks: list[Homework] = []
         for item in data:
             try:

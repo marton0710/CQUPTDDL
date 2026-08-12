@@ -1,11 +1,12 @@
 from datetime import datetime
+from logging import INFO, getLogger
 from urllib.parse import parse_qs
 
 import httpx
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPStatusError
 from httpx._types import CookieTypes
 
-from cquptddl.exc import CquptddlException, LoginFailed
+from cquptddl.exc import CquptddlException, InvalidPlatformCookie, LoginFailed
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.platform_auth import AuthMethod, IDSLoginInput, PlatformEnum
@@ -17,6 +18,9 @@ from .urls import (
     LOGIN_ENTRYPOINT_URL,
     TODO_URL,
 )
+
+logger = getLogger(__name__)
+logger.setLevel(INFO)
 
 
 class Xzcy(BasePlatform):
@@ -32,22 +36,7 @@ class Xzcy(BasePlatform):
         resp = await client.get(LOGIN_ENTRYPOINT_URL, follow_redirects=True)
         service = parse_qs(resp.url.query.decode())["service"][0]
 
-        # try:
-        #     redirect_url, _ = await fuckids.password_login_async(
-        #         str(resp.url), username, password, client=client
-        #     )
-        # except DataRequired as e:
-        #     if "captcha" in e.keys:
-        #         raise LoginFailed(
-        #             "需要验证码。请先去统一认证平台登录一次，以去除验证码"
-        #         ) from e
-        #     else:
-        #         raise LoginFailed(f"缺少数据：{e.keys}") from e
-        # except fuckids.LoginFailed as e:
-        #     raise LoginFailed(str(e)) from e
-
         redirect_url = await login_from_platform_account(user, service)
-
         resp = await client.get(redirect_url, follow_redirects=True)
         if resp.url.path != "/user/index":
             raise LoginFailed("学在重邮登录失败")
@@ -58,7 +47,12 @@ class Xzcy(BasePlatform):
     async def get_homework(cls, client: AsyncClient, user: User) -> list[Homework]:
         try:
             resp = await client.get(TODO_URL)
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+            except HTTPStatusError as e:
+                exc = InvalidPlatformCookie()
+                logger.error("学在重邮cookie无效", exc_info=exc)
+                raise exc from e
             payload: dict = resp.json()["todo_list"]
             return [
                 Homework(

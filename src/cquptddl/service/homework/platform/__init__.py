@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
 from cquptddl.core import get_client
-from cquptddl.exc import InvalidPlatformCredential, PlatformNotBound
+from cquptddl.exc import InvalidPlatformCredentialFormat, PlatformNotBound
 from cquptddl.model.db import Homework, PlatformCookies
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.platform_auth import (
@@ -34,7 +34,7 @@ async def bind(
 ):
     platform = Platform.get_platform_by_name(platform_name)
     if not isinstance(credentials, platform.auth_method.model_class):
-        raise InvalidPlatformCredential
+        raise InvalidPlatformCredentialFormat
     async with AsyncClient() as client:
         cookies = await platform.login(client, user, credentials)
     await session.merge(
@@ -58,6 +58,8 @@ async def fetch_homework(
     """
     Raises:
         PlatformNotBound: 用户没有绑定该平台
+        InvalidPlatformCookie: 平台cookie无效
+
     """
     cookies_model = await session.get(PlatformCookies, (user.id, platform_name))
     if cookies_model is None:
@@ -65,8 +67,6 @@ async def fetch_homework(
     async for client in get_client(cookies=cookies_model.cookies):
         platform = Platform.get_platform_by_name(platform_name)
         homeworks = await platform.get_homework(client, user)
-        # for h in homeworks:
-        #     await session.merge(h)
     return homeworks
 
 
