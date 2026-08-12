@@ -8,7 +8,7 @@ from cquptddl import core
 from cquptddl.core.config import config
 from cquptddl.middleware.auth import need_login
 from cquptddl.model.db.user import User
-from cquptddl.model.schema.auth import LoginInput, LoginOutput, Userinfo
+from cquptddl.model.schema.auth import LoginInput, LoginOutput, Userinfo, UserinfoPatch
 
 router = APIRouter()
 
@@ -70,12 +70,19 @@ async def _(refresh_token: Annotated[str, Cookie()]):
     return resp
 
 
-@router.get("/userinfo")
+@router.get("/me")
 async def _(user: Annotated[User, Depends(need_login)]) -> Userinfo:
+    qqchan_id_to_show = (
+        None if user.qqchan_id is None else "******" + user.qqchan_id[-4:]
+    )
+    meetkey_to_show = (
+        None if user.meetschedule_key is None else "******" + user.meetschedule_key[-4:]
+    )
     return Userinfo(
+        name=user.name,
         email=user.email,
-        qqchan_id=user.qqchan_id,
-        meetschedule_key=user.meetschedule_key,
+        qqchan_id=qqchan_id_to_show,
+        meetschedule_key=meetkey_to_show,
     )
 
 
@@ -85,6 +92,6 @@ async def _(user: Annotated[User, Depends(need_login)]) -> Userinfo:
 
 
 @router.patch("/userinfo", status_code=204)
-async def _(user: Annotated[User, Depends(need_login)], model: Userinfo):
+async def _(user: Annotated[User, Depends(need_login)], model: UserinfoPatch):
     for field in model.model_fields_set:
         setattr(user, field, getattr(model, field))
