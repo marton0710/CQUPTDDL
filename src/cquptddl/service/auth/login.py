@@ -3,7 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cquptddl import core
 from cquptddl.exc import UserReloginRequired
 from cquptddl.model.db.user import User
-from cquptddl.model.event import UserReloginRequiredEvent
+from cquptddl.model.event import (
+    UserLoginEvent,
+    UserRegisterEvent,
+    UserReloginRequiredEvent,
+)
 
 from . import crypto, ids
 
@@ -16,17 +20,27 @@ async def password_login(
         access_token
         refresh_token
         name
+
+    Raises:
+        LoginFailed
     """
     uid, name, cookies = await ids.password_login(username, password)
-    await session.merge(
-        User(
+    old_user = await session.get(User, uid)
+    encrypted_password: str = core.symbol.call("crypto.aes_encrypt", password)
+    if old_user is None:
+        new_user = User(
             id=uid,
-            password=core.symbol.call("crypto.aes_encrypt", password),
+            password=encrypted_password,
             ids_cookie=cookies,
             name=name,
         )
-    )
+        session.add(new_user)
+        core.bus.emit(UserRegisterEvent(user=new_user))
+    else:
+        old_user.password = encrypted_password
+        old_user.ids_cookie = cookies
 
+    core.bus.emit(UserLoginEvent(user=old_user or new_user))
     return crypto.generate_token(uid, False), crypto.generate_token(uid, True), name
 
 
