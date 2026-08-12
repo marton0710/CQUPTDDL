@@ -44,10 +44,10 @@ async def bind(
 
 async def valid_cookie(
     session: AsyncSession, user: User, platform_name: PlatformEnum
-) -> bool:
+) -> bool | None:
     cookies = await session.get(PlatformCookies, (user.id, platform_name))
     if cookies is None:
-        return False
+        return None
     platform = Platform.get_platform_by_name(platform_name)
     return await platform.valid_cookie(cookies.cookies)
 
