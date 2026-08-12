@@ -8,6 +8,9 @@ from cquptddl import core
 from cquptddl.router import router
 
 logging.basicConfig(level=logging.WARNING)
+logging.getLogger(
+    "cquptddl.service.homework.platform.chaoxing:unknown-inbox"
+).disabled = not core.config.DEBUG
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 

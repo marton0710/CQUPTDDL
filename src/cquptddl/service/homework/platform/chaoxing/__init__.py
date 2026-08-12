@@ -20,6 +20,7 @@ from .utils import encryptByAES
 
 logger = getLogger(__name__)
 logger.setLevel(INFO)
+logger_for_unknown_inbox = getLogger(__name__ + ":unknown-inbox")
 
 
 class Chaoxing(BasePlatform):
@@ -94,7 +95,9 @@ class Chaoxing(BasePlatform):
                     )
                 )
             except Exception:  # noqa: BLE001
-                logger.warning("发现未知的收件箱：%s", json.dumps(item))
+                logger_for_unknown_inbox.warning(
+                    "发现未知的收件箱：%s", json.dumps(item)
+                )
                 continue
                 # homeworks.append(
                 #     Homework(
