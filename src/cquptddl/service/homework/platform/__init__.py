@@ -1,14 +1,16 @@
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging import INFO, getLogger
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
+from cquptddl.core import config
 from cquptddl.exc import (
     InvalidPlatformCookie,
     InvalidPlatformCredentialFormat,
     PlatformNotBound,
+    RefreshCoolingDown,
 )
 from cquptddl.model.db import Homework, PlatformInfo
 from cquptddl.model.db.user import User
@@ -88,7 +90,10 @@ async def valid_cookie(
 
 
 async def fetch_homework(
-    session: AsyncSession, user: User, platform_name: PlatformEnum
+    session: AsyncSession,
+    user: User,
+    platform_name: PlatformEnum,
+    check_cooldown: bool = True,
 ) -> Iterable[Homework]:
     """
     Raises:
@@ -99,6 +104,8 @@ async def fetch_homework(
     platform_info = await session.get(PlatformInfo, (user.id, platform_name))
     if platform_info is None:
         raise PlatformNotBound
+    if check_cooldown:
+        _check_platform_cooldown(platform_info)
     platform = Platform.get_platform_by_name(platform_name)
     try:
         homeworks = await platform.get_homework(platform_info.cookies, user)
@@ -109,6 +116,15 @@ async def fetch_homework(
         cookies = await relogin(session, user, platform_name)
         homeworks = await platform.get_homework(cookies, user)
     return homeworks
+
+
+def _check_platform_cooldown(platform_info: PlatformInfo):
+    now = datetime.now()  # ruff: ignore[DTZ005]
+    if now - platform_info.last_refreshed_homework < timedelta(
+        seconds=config.homework_cooldown_ttl
+    ):
+        raise RefreshCoolingDown
+    platform_info.last_refreshed_homework = now
 
 
 async def unbind(session: AsyncSession, user: User, platform_name: PlatformEnum):
