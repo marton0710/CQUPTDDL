@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # 缓存基础时间
     homework_cache_base_ttl: int = 12 * 60 * 60
 
-    # 缓存偏移时间
+    # 缓存偏移时间（仅向后偏移）
     homework_cache_jitter: int = 30 * 60
 
     # 请求冷却时间

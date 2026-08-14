@@ -1,8 +1,5 @@
-import random
-from datetime import datetime, timedelta
 from logging import INFO, getLogger
 
-from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlmodel import select
 
@@ -33,24 +30,16 @@ def _generate_job_id(uid: str, platform_name: str) -> str:
 def _add_job(uid: str, platform_name: PlatformEnum):
     scheduler.add_job(
         _job,
+        "interval",
         args=(uid, platform_name),
         id=_generate_job_id(uid, platform_name),
-        next_run_time=datetime.now().astimezone()
-        + timedelta(
-            seconds=core.config.homework_cache_base_ttl
-            + random.randint(
-                -core.config.homework_cache_jitter, core.config.homework_cache_jitter
-            )
-        ),
+        seconds=core.config.homework_cache_base_ttl,
+        jitter=core.config.homework_cache_jitter,
+        replace_existing=True,
     )
 
 
 async def _job(uid: str, platform_name: PlatformEnum):
-    try:
-        scheduler.remove_job(_generate_job_id(uid, platform_name))
-    except JobLookupError:
-        pass
-
     try:
         async with core.get_session() as session:
             user = await session.get(User, uid)
@@ -61,5 +50,3 @@ async def _job(uid: str, platform_name: PlatformEnum):
         _logger.error(
             "用户%s自动刷新平台%s时发生异常：", uid, platform_name, exc_info=e
         )
-    finally:
-        _add_job(uid, platform_name)
