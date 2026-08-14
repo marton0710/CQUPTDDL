@@ -43,7 +43,7 @@ class Yuketang(BasePlatform):
 
     @classmethod
     async def get_homework(cls, cookies: dict[str, str], user: User) -> list[Homework]:
-        async for client in core.factory.get_client(cookies=cookies):
+        async with core.factory.get_client(cookies=cookies) as client:
             try:
                 courses = await cls._get_course(client)
                 homeworks: list[Homework] = []
@@ -58,16 +58,16 @@ class Yuketang(BasePlatform):
         return homeworks
 
     @classmethod
-    async def valid_cookie(cls, cookies: dict[str, str]) -> bool:  # ty: ignore[invalid-return-type]
+    async def valid_cookie(cls, cookies: dict[str, str]) -> bool:
         """
         验证cookie的合理性
         """
         url = GET_COURSES_URL
-        async for client in core.factory.get_client(
+        async with core.factory.get_client(
             headers={"User-Agent": UA},
             cookies=cookies,
             timeout=10,
-        ):
+        ) as client:
             return (await client.get(url=url)).status_code == 200
 
     @staticmethod

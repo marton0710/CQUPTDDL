@@ -8,7 +8,7 @@ from cquptddl.exc import InvalidToken
 
 
 async def need_login(
-    session: Annotated[AsyncSession, Depends(core.get_session)],
+    session: Annotated[AsyncSession, Depends(core.depends_session)],
     token: Annotated[str, Cookie()] = "",
 ):
     if not token:

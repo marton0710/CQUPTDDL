@@ -44,7 +44,7 @@ class Xzcy(BasePlatform):
 
     @classmethod
     async def get_homework(cls, cookies: dict[str, str], user: User) -> list[Homework]:
-        async for client in core.factory.get_client(cookies=cookies):
+        async with core.factory.get_client(cookies=cookies) as client:
             resp = await client.get(TODO_URL)
             try:
                 resp.raise_for_status()
@@ -71,6 +71,6 @@ class Xzcy(BasePlatform):
         ]
 
     @classmethod
-    async def valid_cookie(cls, cookies: dict[str, str]) -> bool:  # ty: ignore[invalid-return-type]
-        async for client in core.factory.get_client(cookies=cookies):
+    async def valid_cookie(cls, cookies: dict[str, str]) -> bool:
+        async with core.factory.get_client(cookies=cookies) as client:
             return (await client.get(TODO_URL)).status_code == 200

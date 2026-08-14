@@ -35,7 +35,7 @@ logger.setLevel(INFO)
 @router.get("")
 async def _(
     user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.factory.get_session)],
+    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
     num: Annotated[int, Query(ge=-1, le=30)] = -1,
     page: Annotated[int, Query(ge=1)] = 1,
     platform: Annotated[PlatformEnum | None, Query()] = None,
@@ -62,7 +62,7 @@ async def _(
 
 @router.post("/refresh")
 async def refresh(
-    session: Annotated[AsyncSession, Depends(core.factory.get_session)],
+    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
     user: Annotated[User, Depends(need_login)],
     platform: Annotated[PlatformEnum | None, Query()] = None,
 ) -> list[str]:
@@ -92,7 +92,7 @@ async def refresh(
 @router.post("/{id}/complete", status_code=204)
 async def _(
     user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.factory.get_session)],
+    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
     id: UUID,
     model: HomeworkCompleteInput,
 ):
@@ -107,7 +107,7 @@ async def _(platform_name: PlatformEnum) -> AuthMethod:
 @router.post("/platform/{platform_name}/bind", status_code=204)
 async def _(
     user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.get_session)],
+    session: Annotated[AsyncSession, Depends(core.depends_session)],
     platform_name: PlatformEnum,
     credentials: AllAuthInputs,
 ):
@@ -117,7 +117,7 @@ async def _(
 @router.post("/platform/{platform_name}/unbind", status_code=204)
 async def _(
     user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.get_session)],
+    session: Annotated[AsyncSession, Depends(core.depends_session)],
     platform_name: PlatformEnum,
 ):
     return await core.call("homework.platform.unbind", session, user, platform_name)
@@ -126,7 +126,7 @@ async def _(
 @router.get("/platform/{platform_name}/valid_cookie")
 async def _(
     user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.get_session)],
+    session: Annotated[AsyncSession, Depends(core.depends_session)],
     platform_name: PlatformEnum,
 ) -> bool | None:
     return await core.call(

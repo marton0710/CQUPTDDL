@@ -43,8 +43,10 @@ async def bind(
     platform = Platform.get_platform_by_name(platform_name)
     if not isinstance(credentials, platform.auth_method.model_class):
         raise InvalidPlatformCredentialFormat
-    async for client in core.factory.get_client():
+
+    async with core.factory.get_client() as client:
         cookies = await platform.login(client, user, credentials)
+
     credentials_to_save = core.symbol.call(
         "crypto.aes_encrypt", credentials.model_dump_json()
     )
@@ -57,7 +59,6 @@ async def bind(
             last_refreshed_homework=datetime.fromtimestamp(0),  # noqa: DTZ006
         )
     )
-    # last_refresh_time_obj = await session.get(LastRefreshTime, ())
 
 
 async def relogin(
@@ -73,7 +74,7 @@ async def relogin(
     credentials = AuthMethod(platform.auth_method).model_class.model_validate_json(
         core.symbol.call("crypto.aes_decrypt", platform_info.credentials)
     )
-    async for client in core.factory.get_client():
+    async with core.factory.get_client() as client:
         new_cookies = await platform.login(client, user, credentials)
     platform_info.cookies = new_cookies
     return new_cookies

@@ -16,7 +16,7 @@ router = APIRouter()
 @router.post("/login", response_model=LoginOutput)
 async def _(
     model: LoginInput,
-    session: Annotated[AsyncSession, Depends(core.get_session)],
+    session: Annotated[AsyncSession, Depends(core.depends_session)],
     token: Annotated[str, Cookie()] = "",
 ) -> JSONResponse:
     if token:
