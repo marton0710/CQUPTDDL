@@ -13,7 +13,7 @@ from cquptddl.model.schema.platform_auth import (
     PasswordLoginInput,
     PlatformEnum,
 )
-from cquptddl.service.homework.platform.base import Platform as BasePlatform
+from cquptddl.service.platform.base import Platform as BasePlatform
 
 from .urls import LOGIN_URL, NOTICE_URL
 from .utils import encryptByAES

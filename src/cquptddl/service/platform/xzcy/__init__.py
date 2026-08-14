@@ -9,8 +9,8 @@ from cquptddl.exc import InvalidPlatformCookie, LoginFailed
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.platform_auth import AuthMethod, IDSLoginInput, PlatformEnum
-from cquptddl.service.homework.platform.base import Platform as BasePlatform
-from cquptddl.service.homework.platform.base.utils import login_from_platform_account
+from cquptddl.service.platform.base import Platform as BasePlatform
+from cquptddl.service.platform.base.utils import login_from_platform_account
 
 from .urls import (
     HOMEWORK_DETAIL_URL,

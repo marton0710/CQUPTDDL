@@ -1,10 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
+from cquptddl import core
 from cquptddl.model.db import Homework, User
+from cquptddl.model.event import HomeworkRefreshedEvent
 from cquptddl.model.schema.platform_auth import PlatformEnum
-
-from . import platform
 
 
 async def refresh_homework(
@@ -17,7 +17,9 @@ async def refresh_homework(
     """
 
     # 获取所有作业
-    homeworks = list(await platform.fetch_homework(session, user, platform_name))
+    homeworks = list(
+        await core.symbol.call("platform.fetch_homework", session, user, platform_name)
+    )
 
     # 落库
     stored_homework_ids = set(
@@ -40,3 +42,4 @@ async def refresh_homework(
     await session.execute(
         delete(Homework).where(Homework.id.in_(stored_homework_ids))  # ty: ignore[unresolved-attribute]
     )
+    core.bus.emit(HomeworkRefreshedEvent(user=user, platform_name=platform_name))

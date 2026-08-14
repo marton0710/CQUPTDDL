@@ -18,10 +18,8 @@ from cquptddl.model.schema.homework import (
     HomeworkResponse,
 )
 from cquptddl.model.schema.platform_auth import (
-    AllAuthInputs,
     PlatformEnum,
 )
-from cquptddl.service.homework.platform.base import AuthMethod
 
 REFRESH_HOMEWORK_PROMPT_TEMPLATE = "{platform}: {info}"
 REFRESH_HOMEWORK_UNKNOW_ERROR_PROMPT_TEMPLATE = (
@@ -97,38 +95,3 @@ async def _(
     model: HomeworkCompleteInput,
 ):
     await core.call("homework.complete", session, user, id, model.is_complete)
-
-
-@router.get("/platform/{platform_name}/auth_method")
-async def _(platform_name: PlatformEnum) -> AuthMethod:
-    return core.call("homework.platform.get_auth_method", platform_name)
-
-
-@router.post("/platform/{platform_name}/bind", status_code=204)
-async def _(
-    user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.depends_session)],
-    platform_name: PlatformEnum,
-    credentials: AllAuthInputs,
-):
-    await core.call("homework.platform.bind", user, session, platform_name, credentials)
-
-
-@router.post("/platform/{platform_name}/unbind", status_code=204)
-async def _(
-    user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.depends_session)],
-    platform_name: PlatformEnum,
-):
-    return await core.call("homework.platform.unbind", session, user, platform_name)
-
-
-@router.get("/platform/{platform_name}/valid_cookie")
-async def _(
-    user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.depends_session)],
-    platform_name: PlatformEnum,
-) -> bool | None:
-    return await core.call(
-        "homework.platform.valid_cookie", session, user, platform_name
-    )
