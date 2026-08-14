@@ -9,8 +9,8 @@ from cquptddl.model.db import User
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.schema.platform_auth import AllAuthInputs, AuthMethod, PlatformEnum
 
-logger = getLogger(__name__)
-logger.setLevel(INFO)
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
 
 
 class Platform(ABC):

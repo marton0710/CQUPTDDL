@@ -42,4 +42,4 @@ async def refresh_homework(
     await session.execute(
         delete(Homework).where(Homework.id.in_(stored_homework_ids))  # ty: ignore[unresolved-attribute]
     )
-    core.bus.emit(HomeworkRefreshedEvent(user=user, platform_name=platform_name))
+    core.bus.emit(HomeworkRefreshedEvent(uid=user.id, platform_name=platform_name))

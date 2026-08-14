@@ -9,7 +9,9 @@ async def init():
     logging.getLogger(
         "cquptddl.service.platform.chaoxing:unknown-inbox"
     ).disabled = not core.config.DEBUG
+    homework.refresh_task.scheduler.start()
+    await homework.refresh_task.init_refresh_task()
 
 
 async def shutdown():
-    pass
+    homework.refresh_task.scheduler.shutdown()

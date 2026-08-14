@@ -5,8 +5,11 @@ from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
+from cquptddl import core
+from cquptddl.core import get_session
 from cquptddl.model.db import Homework, User
 from cquptddl.model.db.platform_info import PlatformInfo
+from cquptddl.model.event import PlatformUnboundEvent
 from cquptddl.model.schema.platform_auth import PlatformEnum
 
 
@@ -50,8 +53,20 @@ async def get_last_refresh_time(
     return resp.scalar_one() or datetime.fromtimestamp(0).astimezone()
 
 
+async def delete_platform_homework_event_callback(e: PlatformUnboundEvent):
+    async with get_session() as session:
+        await delete_platform_homework(session, e.uid, e.platform_name)
+
+
 async def delete_platform_homework(
-    session: AsyncSession, user: User, platform_name: PlatformEnum
+    session: AsyncSession, uid: str, platform_name: PlatformEnum
 ):
-    stmt = delete(Homework).where(Homework.platform == platform_name)  # ty: ignore[invalid-argument-type]
+    stmt = (
+        delete(Homework)
+        .where(Homework.user_id == uid)  # ty: ignore[invalid-argument-type]
+        .where(Homework.platform == platform_name)  # ty: ignore[invalid-argument-type]
+    )
     await session.execute(stmt)
+
+
+core.bus.on(PlatformUnboundEvent, delete_platform_homework_event_callback)

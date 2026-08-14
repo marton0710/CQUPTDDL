@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cquptddl import core
 from cquptddl.exc import InvalidPlatformCredentialFormat
 from cquptddl.model.db import PlatformInfo, User
+from cquptddl.model.event import PlatformBoundEvent, PlatformUnboundEvent
 from cquptddl.model.schema.platform_auth import AllAuthInputs, AuthMethod, PlatformEnum
 
 from .base import Platform
@@ -39,13 +40,14 @@ async def bind(
             last_refreshed_homework=datetime.fromtimestamp(0),  # noqa: DTZ006
         )
     )
+    core.bus.emit(PlatformBoundEvent(uid=user.id, platform_name=platform_name))
 
 
 async def unbind(session: AsyncSession, user: User, platform_name: PlatformEnum):
     platform_info = await session.get(PlatformInfo, (user.id, platform_name))
     if platform_info is not None:
         await session.delete(platform_info)
-    await core.call("homework.delete_platform_homework", session, user, platform_name)
+    core.bus.emit(PlatformUnboundEvent(uid=user.id, platform_name=platform_name))
 
 
 async def relogin(

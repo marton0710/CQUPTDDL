@@ -6,8 +6,8 @@ from collections.abc import Coroutine
 
 tasks: set[Task] = set()
 _pending_start: set[tuple[Coroutine, str | None]] = set()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
 
 
 def background(coro: Coroutine, name: str | None = None) -> Task:
@@ -19,7 +19,7 @@ def background(coro: Coroutine, name: str | None = None) -> Task:
     task = asyncio.create_task(coro, name=name)
     tasks.add(task)
     task.add_done_callback(_on_task_done)
-    logger.debug("task %s created", name)
+    _logger.debug("task %s created", name)
     return task
 
 
@@ -42,15 +42,15 @@ async def shutdown():
     pending_tasks = list(tasks)
     for task in pending_tasks:
         task.cancel()
-    logger.info("waiting for tasks shutdown...")
+    _logger.info("waiting for tasks shutdown...")
     if pending_tasks:
         ret = await asyncio.gather(*pending_tasks, return_exceptions=True)
         for r in ret:
             if isinstance(r, Exception):
-                logger.error("task error: %s", r, exc_info=r)
+                _logger.error("task error: %s", r, exc_info=r)
             else:
-                logger.info("task returned %s", r)
-    logger.info("所有后台任务已成功停止")
+                _logger.info("task returned %s", r)
+    _logger.info("所有后台任务已成功停止")
 
 
 def _on_task_done(t: Task):
@@ -59,4 +59,4 @@ def _on_task_done(t: Task):
         return
     exc = t.exception()
     if exc is not None:
-        logger.error("task %s error: %s", t, exc, exc_info=exc)
+        _logger.error("task %s error: %s", t, exc, exc_info=exc)

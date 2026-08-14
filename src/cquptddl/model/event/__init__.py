@@ -1,6 +1,5 @@
 from abxbus import BaseEvent
 
-from cquptddl.model.db import User
 from cquptddl.model.schema.platform_auth import PlatformEnum
 
 
@@ -9,13 +8,29 @@ class UserReloginRequiredEvent(BaseEvent):
 
 
 class UserRegisterEvent(BaseEvent):
-    user: User
+    uid: str
 
 
 class UserLoginEvent(BaseEvent):
-    user: User
+    uid: str
 
 
 class HomeworkRefreshedEvent(BaseEvent):
-    user: User
+    uid: str
     platform_name: PlatformEnum
+
+
+class PlatformBoundEvent(BaseEvent):
+    uid: str
+    platform_name: PlatformEnum
+
+
+class PlatformUnboundEvent(BaseEvent):
+    uid: str
+    platform_name: PlatformEnum
+
+
+class AutoRefreshHomeworkFailedEvent(BaseEvent):
+    uid: str
+    platform_name: PlatformEnum
+    exc: Exception

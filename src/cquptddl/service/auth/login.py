@@ -35,12 +35,12 @@ async def password_login(
             name=name,
         )
         session.add(new_user)
-        core.bus.emit(UserRegisterEvent(user=new_user))
+        core.bus.emit(UserRegisterEvent(uid=uid))
     else:
         old_user.password = encrypted_password
         old_user.ids_cookie = cookies
 
-    core.bus.emit(UserLoginEvent(user=old_user or new_user))
+    core.bus.emit(UserLoginEvent(uid=uid))
     return crypto.generate_token(uid, False), crypto.generate_token(uid, True), name
 
 
