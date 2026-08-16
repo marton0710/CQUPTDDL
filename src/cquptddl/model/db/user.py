@@ -1,3 +1,5 @@
+from uuid import UUID, uuid7
+
 from sqlmodel import JSON, Field, SQLModel
 
 
@@ -9,3 +11,6 @@ class User(SQLModel, table=True):
     email: str | None = None
     qqchan_id: str | None = None
     meetschedule_key: str | None = Field(None, unique=True)
+    token_version: UUID = Field(
+        description="token版本，用于退出登录", default_factory=uuid7
+    )

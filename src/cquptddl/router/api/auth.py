@@ -17,12 +17,7 @@ router = APIRouter()
 async def _(
     model: LoginInput,
     session: Annotated[AsyncSession, Depends(core.depends_session)],
-    token: Annotated[str, Cookie()] = "",
 ) -> JSONResponse:
-    if token:
-        user: User = await core.call("auth.get_user_from_token", session, token)
-        return JSONResponse(LoginOutput(name=user.name).model_dump())
-
     _result: tuple[str, str, str] = await core.call(
         "auth.password_login", session, model.username, model.password
     )
@@ -48,8 +43,13 @@ async def _(
 
 
 @router.post("/refresh")
-async def _(refresh_token: Annotated[str, Cookie()]):
-    _result: tuple[str, str] = core.call("auth.refresh_token", refresh_token)
+async def _(
+    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
+    refresh_token: Annotated[str, Cookie()],
+):
+    _result: tuple[str, str] = await core.call(
+        "auth.refresh_token", session, refresh_token
+    )
     new_access_token, new_refresh_token = _result
     resp = Response(status_code=204)
     resp.set_cookie(
@@ -95,3 +95,12 @@ async def _(user: Annotated[User, Depends(need_login)]) -> Userinfo:
 async def _(user: Annotated[User, Depends(need_login)], model: UserinfoPatch):
     for field in model.model_fields_set:
         setattr(user, field, getattr(model, field))
+
+
+@router.post("/logout", status_code=204)
+async def _(user: Annotated[User, Depends(need_login)]):
+    await core.call("auth.logout", user)
+    resp = Response(status_code=204)
+    resp.delete_cookie("token")
+    resp.delete_cookie("refresh_token", "/api/auth/refresh")
+    return resp

@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
@@ -28,20 +30,26 @@ async def password_login(
     old_user = await session.get(User, uid)
     encrypted_password: str = core.symbol.call("crypto.aes_encrypt", password)
     if old_user is None:
-        new_user = User(
+        user = User(
             id=uid,
             password=encrypted_password,
             ids_cookie=cookies,
             name=name,
+            token_version=uuid.uuid7(),
         )
-        session.add(new_user)
+        session.add(user)
         core.bus.emit(UserRegisterEvent(uid=uid))
     else:
-        old_user.password = encrypted_password
-        old_user.ids_cookie = cookies
+        user = old_user
+        user.password = encrypted_password
+        user.ids_cookie = cookies
 
     core.bus.emit(UserLoginEvent(uid=uid))
-    return crypto.generate_token(uid, False), crypto.generate_token(uid, True), name
+    return (
+        crypto.generate_token(uid, user.token_version, False),
+        crypto.generate_token(uid, user.token_version, True),
+        name,
+    )
 
 
 async def relogin(user: User):
@@ -57,17 +65,20 @@ async def relogin(user: User):
 
 
 async def get_user_from_token(session: AsyncSession, token: str) -> User:
-    uid = crypto.validate_token(token)
-    user = await session.get(User, uid)
-    assert user
-    return user
+    return await crypto.validate_token(session, token)
 
 
-def refresh_token(token: str) -> tuple[str, str]:
+async def refresh_token(session: AsyncSession, token: str) -> tuple[str, str]:
     """
     Returns:
         new_access_token
         new_refresh_token
     """
-    uid = crypto.validate_token(token, True)
-    return crypto.generate_token(uid, False), crypto.generate_token(uid, True)
+    user = await crypto.validate_token(session, token, True)
+    return crypto.generate_token(
+        user.id, user.token_version, False
+    ), crypto.generate_token(user.id, user.token_version, True)
+
+
+async def logout(user: User):
+    user.token_version = uuid.uuid7()
