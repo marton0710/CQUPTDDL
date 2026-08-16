@@ -1,4 +1,5 @@
 import uuid
+from logging import INFO, getLogger
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,12 +7,16 @@ from cquptddl import core
 from cquptddl.exc import UserReloginRequired
 from cquptddl.model.db.user import User
 from cquptddl.model.event import (
+    AccountDeletedEvent,
     UserLoginEvent,
     UserRegisterEvent,
     UserReloginRequiredEvent,
 )
 
 from . import crypto, ids
+
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
 
 
 async def password_login(
@@ -45,6 +50,7 @@ async def password_login(
         user.ids_cookie = cookies
 
     core.bus.emit(UserLoginEvent(uid=uid))
+    _logger.info("用户%s已登录", uid)
     return (
         crypto.generate_token(uid, user.token_version, False),
         crypto.generate_token(uid, user.token_version, True),
@@ -82,3 +88,9 @@ async def refresh_token(session: AsyncSession, token: str) -> tuple[str, str]:
 
 async def logout(user: User):
     user.token_version = uuid.uuid7()
+
+
+async def delete_account(session: AsyncSession, user: User):
+    await session.delete(user)
+    core.bus.emit(AccountDeletedEvent(uid=user.id))
+    _logger.info("用户%s已删除账户", user.id)

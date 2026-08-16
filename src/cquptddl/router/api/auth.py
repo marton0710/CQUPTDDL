@@ -104,3 +104,15 @@ async def _(user: Annotated[User, Depends(need_login)]):
     resp.delete_cookie("token")
     resp.delete_cookie("refresh_token", "/api/auth/refresh")
     return resp
+
+
+@router.delete("/me", status_code=204)
+async def _(
+    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
+    user: Annotated[User, Depends(need_login)],
+):
+    await core.symbol.call("auth.delete_account", session, user)
+    resp = Response(status_code=204)
+    resp.delete_cookie("token")
+    resp.delete_cookie("refresh_token", "/api/auth/refresh")
+    return resp

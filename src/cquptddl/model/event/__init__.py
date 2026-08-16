@@ -34,3 +34,7 @@ class AutoRefreshHomeworkFailedEvent(BaseEvent):
     uid: str
     platform_name: PlatformEnum
     exc: Exception
+
+
+class AccountDeletedEvent(BaseEvent):
+    uid: str
