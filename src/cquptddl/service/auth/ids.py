@@ -4,6 +4,7 @@ from typing import Any
 import fuckids
 from httpx import AsyncClient
 
+from cquptddl import core
 from cquptddl.exc import LoginFailed
 
 from .const import IDS_GET_USERINFO_SERVICE
@@ -23,23 +24,24 @@ async def password_login(
     Raises:
         LoginFailed
     """
-    try:
-        _, ctx = await fuckids.password_login_async(
-            IDS_GET_USERINFO_SERVICE, username, password
-        )
-    except fuckids.errors.WrongPassword as e:
-        raise LoginFailed("用户名或密码错误") from e
-    except fuckids.errors.DataRequired as e:
-        if "captcha" in e.keys:
-            raise LoginFailed("请手动登录一次统一认证平台以去除验证码")
-    except Exception as e:
-        raise LoginFailed("无法登录你的账号") from e
+    async with core.factory.get_client() as client:
+        try:
+            _, ctx = await fuckids.password_login_async(
+                IDS_GET_USERINFO_SERVICE, username, password, client=client
+            )
+        except fuckids.errors.WrongPassword as e:
+            raise LoginFailed("用户名或密码错误") from e
+        except fuckids.errors.DataRequired as e:
+            if "captcha" in e.keys:
+                raise LoginFailed("请手动登录一次统一认证平台以去除验证码")
+        except Exception as e:
+            raise LoginFailed("无法登录你的账号") from e
 
-    try:
-        uid, name = await _get_userinfo(ctx.client)
-    except Exception as e:
-        traceback.print_exc()
-        raise LoginFailed("获取用户信息失败") from e
+        try:
+            uid, name = await _get_userinfo(ctx.client)
+        except Exception as e:
+            traceback.print_exc()
+            raise LoginFailed("获取用户信息失败") from e
 
     return uid, name, _get_ids_cookies(ctx.client)
 
