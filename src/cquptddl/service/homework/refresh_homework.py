@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import delete, select
+from sqlmodel import select
 
 from cquptddl import core
 from cquptddl.model.db import Homework, User
@@ -39,7 +39,7 @@ async def refresh_homework(
         stored_homework_ids.discard(h.id)
 
     # 删除不存在的作业
-    await session.execute(
-        delete(Homework).where(Homework.id.in_(stored_homework_ids))  # ty: ignore[unresolved-attribute]
-    )
+    # await session.execute(
+    #     delete(Homework).where(Homework.id.in_(stored_homework_ids))  # ty: ignore[unresolved-attribute, unused-ignore-comment]
+    # )
     core.bus.emit(HomeworkRefreshedEvent(uid=user.id, platform_name=platform_name))
