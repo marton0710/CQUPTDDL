@@ -1,4 +1,7 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from cquptddl.model.schema.meetschedule import MeetscheduleConfigSchema
+from cquptddl.model.schema.qqpush import QQPushConfigSchema
 
 
 class LoginInput(BaseModel):
@@ -13,13 +16,7 @@ class LoginOutput(BaseModel):
 class Userinfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(description="用户姓名")
-    email: EmailStr | None = None
-    qqchan_id: str | None = None
-    meetschedule_key: str | None = None
-
-
-class UserinfoPatch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    email: EmailStr | None = None
-    qqchan_id: str | None = None
-    meetschedule_key: str | None = None
+    qqpush_config: QQPushConfigSchema = Field(description="qq推送配置")
+    meetschedule_config: MeetscheduleConfigSchema = Field(
+        description="meet课程表同步配置"
+    )

@@ -4,7 +4,7 @@ from sqlmodel import select
 from cquptddl import core
 from cquptddl.model.db import Homework, User
 from cquptddl.model.event import HomeworkRefreshedEvent
-from cquptddl.model.schema.platform_auth import PlatformEnum
+from cquptddl.model.schema.platform import PlatformEnum
 
 
 async def refresh_homework(

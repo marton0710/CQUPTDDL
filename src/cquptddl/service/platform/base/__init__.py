@@ -7,7 +7,7 @@ from httpx import AsyncClient
 
 from cquptddl.model.db import User
 from cquptddl.model.db.homework import Homework
-from cquptddl.model.schema.platform_auth import AllAuthInputs, AuthMethod, PlatformEnum
+from cquptddl.model.schema.platform import AllAuthInputs, AuthMethod, PlatformEnum
 
 _logger = getLogger(__name__)
 _logger.setLevel(INFO)

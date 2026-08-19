@@ -11,7 +11,7 @@ from cquptddl.model.event import (
     PlatformBoundEvent,
     PlatformUnboundEvent,
 )
-from cquptddl.model.schema.platform_auth import PlatformEnum
+from cquptddl.model.schema.platform import PlatformEnum
 
 from .refresh_homework import refresh_homework
 

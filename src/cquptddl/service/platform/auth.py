@@ -6,7 +6,7 @@ from cquptddl import core
 from cquptddl.exc import InvalidPlatformCredentialFormat
 from cquptddl.model.db import PlatformInfo, User
 from cquptddl.model.event import PlatformBoundEvent, PlatformUnboundEvent
-from cquptddl.model.schema.platform_auth import AllAuthInputs, AuthMethod, PlatformEnum
+from cquptddl.model.schema.platform import AllAuthInputs, AuthMethod, PlatformEnum
 
 from .base import Platform
 

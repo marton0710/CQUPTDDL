@@ -4,8 +4,8 @@ version = "1.99"
 description = "Add your description here"
 readme = "README.md"
 authors = [
-    { name = "Marton", email = "1146054766@qq.com"},
-    { name = "Bail", email = "2915289604@qq.com" }
+    { name = "Marton", email = "1146054766@qq.com" },
+    { name = "Bail", email = "2915289604@qq.com" },
 ]
 requires-python = ">=3.14"
 dependencies = [
@@ -18,7 +18,7 @@ dependencies = [
     "lxml>=6.1.0",
     "meetschedule-sdk>=1.1.1",
     "pycryptodome>=3.23.0",
-    "pydantic[email]>=2.13.3",
+    "pydantic>=2.13.4",
     "pydantic-settings>=2.14.0",
     "pyjwt>=2.12.1",
     "sqlmodel>=0.0.38",
@@ -43,7 +43,4 @@ requires = ["uv_build>=0.11.14,<0.12.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = [
-    "aiosqlite>=0.22.1",
-    "respx>=0.23.1",
-]
+dev = ["aiosqlite>=0.22.1", "respx>=0.23.1"]

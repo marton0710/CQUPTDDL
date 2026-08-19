@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cquptddl import core
 from cquptddl.middleware.auth import need_login
 from cquptddl.model.db import User
-from cquptddl.model.schema.platform_auth import AllAuthInputs, AuthMethod, PlatformEnum
+from cquptddl.model.schema.platform import AllAuthInputs, AuthMethod, PlatformEnum
 
 router = APIRouter()
 

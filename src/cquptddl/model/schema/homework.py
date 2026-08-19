@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import UUID5, BaseModel, Field
 
-from cquptddl.model.schema.platform_auth import PlatformEnum
+from cquptddl.model.schema.platform import PlatformEnum
 
 
 class Homework(BaseModel):

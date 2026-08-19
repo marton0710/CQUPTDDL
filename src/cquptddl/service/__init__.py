@@ -2,7 +2,7 @@ import logging
 
 from cquptddl import core
 
-from . import auth, crypto, homework, platform  # noqa: F401
+from . import auth, crypto, homework, meetschedule, platform, qqpush  # noqa: F401
 
 
 async def init():

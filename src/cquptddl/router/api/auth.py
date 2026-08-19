@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cquptddl import core
 from cquptddl.core.config import config
 from cquptddl.middleware.auth import need_login
+from cquptddl.model.db.meetschedule_config import MeetscheduleConfig
+from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.db.user import User
-from cquptddl.model.schema.auth import LoginInput, LoginOutput, Userinfo, UserinfoPatch
+from cquptddl.model.schema.auth import LoginInput, LoginOutput, Userinfo
 
 router = APIRouter()
 
@@ -71,30 +73,30 @@ async def _(
 
 
 @router.get("/me")
-async def _(user: Annotated[User, Depends(need_login)]) -> Userinfo:
-    qqchan_id_to_show = (
-        None if user.qqchan_id is None else "******" + user.qqchan_id[-4:]
+async def _(
+    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
+    user: Annotated[User, Depends(need_login)],
+) -> Userinfo:
+    qqpush_config = await session.get(QQPushConfig, user.id)
+    meetschedule_config = await session.get(MeetscheduleConfig, user.id)
+    assert qqpush_config and meetschedule_config is not None
+
+    qqpush_config_data = qqpush_config.model_dump()
+    meetschedule_config_data = meetschedule_config.model_dump()
+
+    del qqpush_config_data["user_id"]
+    del meetschedule_config_data["user_id"]
+    meetschedule_config_data["meetschedule_key"] = (
+        None
+        if meetschedule_config_data["meetschedule_key"] is None
+        else "******" + meetschedule_config_data["meetschedule_key"][-4:]
     )
-    meetkey_to_show = (
-        None if user.meetschedule_key is None else "******" + user.meetschedule_key[-4:]
-    )
+
     return Userinfo(
         name=user.name,
-        email=user.email,
-        qqchan_id=qqchan_id_to_show,
-        meetschedule_key=meetkey_to_show,
+        qqpush_config=qqpush_config_data,
+        meetschedule_config=meetschedule_config_data,
     )
-
-
-# @router.put("/userinfo", status_code=202)
-# async def _(user: Annotated[User, Depends(need_login)], model: UserinfoInput):
-#     pass
-
-
-@router.patch("/userinfo", status_code=204)
-async def _(user: Annotated[User, Depends(need_login)], model: UserinfoPatch):
-    for field in model.model_fields_set:
-        setattr(user, field, getattr(model, field))
 
 
 @router.post("/logout", status_code=204)

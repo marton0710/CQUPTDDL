@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie, PlatformNotBound, RefreshCoolingDown
 from cquptddl.model.db import Homework, PlatformInfo, User
-from cquptddl.model.schema.platform_auth import PlatformEnum
+from cquptddl.model.schema.platform import PlatformEnum
 
 from . import auth
 from .base import Platform

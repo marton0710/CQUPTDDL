@@ -29,7 +29,7 @@ class ExpiredToken(InvalidToken):
 
 
 class UserReloginRequired(CquptddlException):
-    status = 401
+    status = 510
     detail = "需要手动重新登录"
 
 
@@ -54,5 +54,5 @@ class PlatformNotBound(CquptddlException):
 
 
 class InvalidPlatformCookie(CquptddlException):
-    status = 401
+    status = 510
     detail = "平台cookie无效，请检查是否已过期"

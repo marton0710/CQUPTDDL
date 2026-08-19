@@ -8,9 +8,6 @@ class User(SQLModel, table=True):
     password: str | None = Field(description="统一认证密码，若为扫码登录则为None")
     ids_cookie: dict = Field({}, description="重邮统一认证平台cookie", sa_type=JSON)
     name: str
-    email: str | None = None
-    qqchan_id: str | None = None
-    meetschedule_key: str | None = Field(None, unique=True)
     token_version: UUID = Field(
         description="token版本，用于退出登录", default_factory=uuid7
     )

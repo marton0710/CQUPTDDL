@@ -7,7 +7,7 @@ from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.db.user import User
-from cquptddl.model.schema.platform_auth import AuthMethod, IDSLoginInput, PlatformEnum
+from cquptddl.model.schema.platform import AuthMethod, IDSLoginInput, PlatformEnum
 from cquptddl.service.platform.base import Platform as BasePlatform
 from cquptddl.service.platform.base.utils import login_from_platform_account
 

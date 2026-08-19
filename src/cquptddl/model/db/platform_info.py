@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import JSON
 from sqlmodel import Field, SQLModel
 
-from cquptddl.model.schema.platform_auth import PlatformEnum
+from cquptddl.model.schema.platform import PlatformEnum
 
 
 class PlatformInfo(SQLModel, table=True):

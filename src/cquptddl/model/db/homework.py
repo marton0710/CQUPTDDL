@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlmodel import Field, SQLModel
 
-from cquptddl.model.schema.platform_auth import PlatformEnum
+from cquptddl.model.schema.platform import PlatformEnum
 
 UUID_NAMESPACE_HOMEWORK_ID = uuid.UUID("6db7a68c-8723-4b63-87c8-876e32eda418")
 

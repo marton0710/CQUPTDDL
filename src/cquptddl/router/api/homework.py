@@ -17,7 +17,7 @@ from cquptddl.model.schema.homework import (
     HomeworkCompleteInput,
     HomeworkResponse,
 )
-from cquptddl.model.schema.platform_auth import (
+from cquptddl.model.schema.platform import (
     PlatformEnum,
 )
 

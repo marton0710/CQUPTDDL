@@ -10,7 +10,7 @@ from cquptddl.core import get_session
 from cquptddl.model.db import Homework, User
 from cquptddl.model.db.platform_info import PlatformInfo
 from cquptddl.model.event import PlatformUnboundEvent
-from cquptddl.model.schema.platform_auth import PlatformEnum
+from cquptddl.model.schema.platform import PlatformEnum
 
 
 async def get_cached_homework(
