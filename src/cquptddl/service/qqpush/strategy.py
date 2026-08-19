@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from datetime import time, timedelta
+from logging import INFO, getLogger
 from uuid import UUID
 
 from apscheduler.job import Job
+from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -12,6 +14,9 @@ from cquptddl.model.schema.qqpush import QQPushStrategyEnum
 from cquptddl.service.qqpush.db import get_dying_homeworks, get_homeworks_with_deadline
 
 from .push import push_dying_homework, push_dying_homeworks
+
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
 
 
 class QQPushStrategy(ABC):
@@ -61,7 +66,11 @@ class QQPushStrategy(ABC):
 
     def clear(self):
         for job in self._user_jobs:
-            job.remove()
+            try:
+                job.remove()
+                _logger.debug("任务%s已移除", job.id)
+            except JobLookupError:
+                _logger.warning("移除时未找到id为%s的job", job.id)
         self._user_jobs.clear()
 
 
@@ -72,6 +81,11 @@ class ScheduledStrategy(QQPushStrategy):
             self._job, trigger, id=self._generate_job_id()
         )
         self._record_user_job(job)
+        _logger.debug(
+            "已创建用户%s的定时推送任务，将于%s运行",
+            self.user_id,
+            job.next_run_time,
+        )
 
     async def _job(self):  # ty: ignore[invalid-method-override]
         homeworks_to_push = await get_dying_homeworks(self.user_id, self.qq_push_scope)
@@ -89,6 +103,12 @@ class RealtimeStrategy(QQPushStrategy):
                 next_run_time=h.deadline - timedelta(hours=self.qq_push_scope),
             )
             self._record_user_job(job)
+            _logger.debug(
+                "已创建用户%s、作业%s的实时推送任务，将于%s运行",
+                self.user_id,
+                h.id,
+                job.next_run_time,
+            )
 
     async def _job(self, homework: Homework):  # ty: ignore[invalid-method-override]
         await push_dying_homework(homework)

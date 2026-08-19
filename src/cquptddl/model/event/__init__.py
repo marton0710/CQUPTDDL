@@ -1,6 +1,9 @@
+from datetime import time
+
 from abxbus import BaseEvent
 
 from cquptddl.model.schema.platform import PlatformEnum
+from cquptddl.model.schema.qqpush import QQPushStrategyEnum
 
 
 class UserReloginRequiredEvent(BaseEvent):
@@ -37,4 +40,8 @@ class AutoRefreshHomeworkFailedEvent(BaseEvent):
 
 
 class AccountDeletedEvent(BaseEvent):
+    uid: str
+
+
+class QQPushConfigChangedEvent(BaseEvent):
     uid: str
