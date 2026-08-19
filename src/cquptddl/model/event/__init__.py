@@ -45,3 +45,7 @@ class AccountDeletedEvent(BaseEvent):
 
 class QQPushConfigChangedEvent(BaseEvent):
     uid: str
+
+
+class InvalidQQChanIDEvent(BaseEvent):
+    uid: str

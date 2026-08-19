@@ -3,7 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cquptddl import core
 from cquptddl.model.db import User
 from cquptddl.model.db.qqpush_config import QQPushConfig
-from cquptddl.model.event import QQPushConfigChangedEvent, UserRegisterEvent
+from cquptddl.model.event import (
+    InvalidQQChanIDEvent,
+    QQPushConfigChangedEvent,
+    UserRegisterEvent,
+)
 from cquptddl.model.schema.qqpush import QQPushConfigSchema
 
 
@@ -19,4 +23,12 @@ async def _generate_qqpush_config_after_register(event: UserRegisterEvent):
         session.add(QQPushConfig(user_id=event.uid))
 
 
+async def _clear_invalid_qqchan_id(event: InvalidQQChanIDEvent):
+    async with core.factory.get_session() as session:
+        c = await session.get(QQPushConfig, event.uid)
+        assert c
+        c.qqchan_id = None
+
+
 core.bus.on(UserRegisterEvent, _generate_qqpush_config_after_register)
+core.bus.on(InvalidQQChanIDEvent, _clear_invalid_qqchan_id)
