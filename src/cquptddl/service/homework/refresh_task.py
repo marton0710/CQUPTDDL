@@ -21,6 +21,7 @@ _logger.setLevel(INFO)
 
 
 async def init_refresh_task():
+    scheduler.start()
     async with core.factory.get_session() as session:
         stmt = select(PlatformInfo)
         resp = await session.execute(stmt)

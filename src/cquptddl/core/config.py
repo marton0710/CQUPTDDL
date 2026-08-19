@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_SECONDS: int = 900
     REFRESH_TOKEN_EXPIRE_SECONDS: int = 86400 * 7
 
+    # qqbot相关。api_key名称的recv和send与qqbot端意义相同，不需要对称
+    QQBOT_RECV_API_KEY: str  # 从后端发往qq机器人的报文所需的api_key
+    QQBOT_SEND_API_KEY: str  # 从qq机器人发往后端
+
     # 读取.env，忽略额外字段
     model_config = SettingsConfigDict(
         env_file=".env",
