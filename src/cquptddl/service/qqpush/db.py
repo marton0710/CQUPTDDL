@@ -18,3 +18,14 @@ async def get_dying_homeworks(user_id: str, scope: int) -> Iterable[Homework]:
     async with core.factory.get_session() as session:
         resp = await session.execute(sql)
         return resp.scalars().all()
+
+
+async def get_homeworks_with_deadline(user_id: str) -> Iterable[Homework]:
+    sql = (
+        select(Homework)
+        .where(Homework.user_id == user_id)
+        .where(Homework.deadline != None)
+    )
+    async with core.factory.get_session() as session:
+        resp = await session.execute(sql)
+        return resp.scalars().all()

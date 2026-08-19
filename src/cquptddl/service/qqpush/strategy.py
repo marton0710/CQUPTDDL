@@ -1,17 +1,17 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
-from datetime import time
+from datetime import time, timedelta
 from uuid import UUID
 
 from apscheduler.job import Job
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from cquptddl.model.db import Homework
 from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.schema.qqpush import QQPushStrategyEnum
-from cquptddl.service.qqpush.db import get_dying_homeworks
+from cquptddl.service.qqpush.db import get_dying_homeworks, get_homeworks_with_deadline
 
-from .push import push_dying_homeworks
+from .push import push_dying_homework, push_dying_homeworks
 
 
 class QQPushStrategy(ABC):
@@ -21,6 +21,7 @@ class QQPushStrategy(ABC):
     qq_push_strategy: QQPushStrategyEnum
     qq_push_at: time
     qq_push_scope: int
+    _user_jobs: list[Job]
 
     @abstractmethod
     async def on_create(self):
@@ -38,6 +39,7 @@ class QQPushStrategy(ABC):
         self.qq_push_strategy = config.qq_push_strategy
         self.qq_push_at = config.qq_push_at
         self.qq_push_scope = config.qq_push_scope
+        self._user_jobs = []
 
     @classmethod
     def from_strategy_name(
@@ -46,26 +48,47 @@ class QQPushStrategy(ABC):
         match strategy_name:
             case QQPushStrategyEnum.SCHEDULED:
                 return ScheduledStrategy
-            # case QQPushStrategyEnum.REALTIME:
-            #     return RealtimeStrategy
+            case QQPushStrategyEnum.REALTIME:
+                return RealtimeStrategy
 
     def _generate_job_id(self, homework_id: UUID | None = None) -> str:
-        # if self.qq_push_strategy == QQPushStrategyEnum.REALTIME and homework_id is None:
-        #     raise ValueError('实时推送任务需要设置作业id')
+        if self.qq_push_strategy == QQPushStrategyEnum.REALTIME and homework_id is None:
+            raise ValueError("实时推送任务需要设置作业id")
         return f"qqpush-{self.user_id}{f'-{homework_id}' if homework_id else ''}"
 
-    def _clear_current_user_job(self):
-        jobs: Iterable[Job] = self.scheduler.get_jobs()
-        for job in jobs:
-            if job.id.startswith(f"qqpush-{self.user_id}"):
-                job.remove()
+    def _record_user_job(self, job: Job):
+        self._user_jobs.append(job)
+
+    def clear(self):
+        for job in self._user_jobs:
+            job.remove()
+        self._user_jobs.clear()
 
 
 class ScheduledStrategy(QQPushStrategy):
     async def on_create(self):
         trigger = CronTrigger(hour=self.qq_push_at.hour, minute=self.qq_push_at.minute)
-        self.scheduler.add_job(self._job, trigger, id=self._generate_job_id())
+        job: Job = self.scheduler.add_job(
+            self._job, trigger, id=self._generate_job_id()
+        )
+        self._record_user_job(job)
 
     async def _job(self):  # ty: ignore[invalid-method-override]
         homeworks_to_push = await get_dying_homeworks(self.user_id, self.qq_push_scope)
         await push_dying_homeworks(self.user_id, homeworks_to_push)
+
+
+class RealtimeStrategy(QQPushStrategy):
+    async def on_create(self):
+        for h in await get_homeworks_with_deadline(self.user_id):
+            assert h.deadline
+            job: Job = self.scheduler.add_job(
+                self._job,
+                kwargs={"homework": h},
+                id=self._generate_job_id(h.id),
+                next_run_time=h.deadline - timedelta(hours=self.qq_push_scope),
+            )
+            self._record_user_job(job)
+
+    async def _job(self, homework: Homework):  # ty: ignore[invalid-method-override]
+        await push_dying_homework(homework)

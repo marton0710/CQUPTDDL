@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class QQPushStrategyEnum(StrEnum):
     SCHEDULED = "scheduled"
-    # REALTIME = 'realtime'
+    REALTIME = "realtime"
 
 
 class QQPushConfigSchema(BaseModel):
