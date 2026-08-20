@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,7 @@ from cquptddl import core
 from cquptddl.core import get_session
 from cquptddl.model.db import Homework, User
 from cquptddl.model.db.platform_info import PlatformInfo
+from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.event import PlatformUnboundEvent
 from cquptddl.model.schema.platform import PlatformEnum
 
@@ -67,6 +68,40 @@ async def delete_platform_homework(
         .where(Homework.platform == platform_name)  # ty: ignore[invalid-argument-type]
     )
     await session.execute(stmt)
+
+
+async def get_user_dying_homeworks(
+    user_id: str, scope: int | None = None
+) -> Iterable[Homework]:
+    if scope is None:
+        async with core.factory.get_session() as session:
+            c = await session.get(QQPushConfig, user_id)
+        assert c is not None
+        scope = c.qq_push_scope
+
+    now = datetime.now().astimezone()
+    sql = (
+        select(Homework)
+        .where(Homework.user_id == user_id)
+        .where(Homework.done == False)
+        .where(Homework.deadline > now)  # ty: ignore[unsupported-operator]
+        .where(Homework.deadline < now + timedelta(hours=scope))  # ty: ignore[unsupported-operator]
+    )
+    async with core.factory.get_session() as session:
+        resp = await session.execute(sql)
+        return resp.scalars().all()
+
+
+async def get_user_homeworks_with_deadline(user_id: str) -> Iterable[Homework]:
+    sql = (
+        select(Homework)
+        .where(Homework.user_id == user_id)
+        .where(Homework.done == False)
+        .where(Homework.deadline != None)
+    )
+    async with core.factory.get_session() as session:
+        resp = await session.execute(sql)
+        return resp.scalars().all()
 
 
 core.bus.on(PlatformUnboundEvent, delete_platform_homework_event_callback)

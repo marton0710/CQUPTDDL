@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from datetime import time, timedelta
 from logging import INFO, getLogger
 from uuid import UUID
@@ -8,10 +9,10 @@ from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from cquptddl import core
 from cquptddl.model.db import Homework
 from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.schema.qqpush import QQPushStrategyEnum
-from cquptddl.service.qqpush.db import get_dying_homeworks, get_homeworks_with_deadline
 
 from .push import push_dying_homework, push_dying_homeworks
 
@@ -59,7 +60,7 @@ class QQPushStrategy(ABC):
     def _generate_job_id(self, homework_id: UUID | None = None) -> str:
         if self.qq_push_strategy == QQPushStrategyEnum.REALTIME and homework_id is None:
             raise ValueError("实时推送任务需要设置作业id")
-        return f"qqpush-{self.user_id}{f'-{homework_id}' if homework_id else ''}"
+        return f"qqpush:{self.user_id}{f':{homework_id}' if homework_id else ''}"
 
     def _record_user_job(self, job: Job):
         self._user_jobs.append(job)
@@ -88,13 +89,17 @@ class ScheduledStrategy(QQPushStrategy):
         )
 
     async def _job(self):  # ty: ignore[invalid-method-override]
-        homeworks_to_push = await get_dying_homeworks(self.user_id, self.qq_push_scope)
+        homeworks_to_push: Iterable[Homework] = await core.symbol.call(
+            "homework.get_user_dying_homeworks", self.user_id, self.qq_push_scope
+        )
         await push_dying_homeworks(self.user_id, homeworks_to_push)
 
 
 class RealtimeStrategy(QQPushStrategy):
     async def on_create(self):
-        for h in await get_homeworks_with_deadline(self.user_id):
+        for h in await core.symbol.call(
+            "homework.get_user_homeworks_with_deadline", self.user_id
+        ):
             assert h.deadline
             job: Job = self.scheduler.add_job(
                 self._job,

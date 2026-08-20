@@ -6,13 +6,19 @@ from .get_cached_homework import (
     get_cached_homework,
     get_cached_homework_count,
     get_last_refresh_time,
+    get_user_dying_homeworks,
+    get_user_homeworks_with_deadline,
 )
 from .refresh_homework import refresh_homework
 
 __all__ = ["refresh_homework", "refresh_task"]
 
-core.export("homework.refresh_homework", refresh_homework)
-core.export("homework.complete", complete_homework)
-core.export("homework.get_cached_homework", get_cached_homework)
-core.export("homework.get_cached_homework_count", get_cached_homework_count)
-core.export("homework.get_last_refresh_time", get_last_refresh_time)
+core.symbol.export("homework.refresh_homework", refresh_homework)
+core.symbol.export("homework.complete", complete_homework)
+core.symbol.export("homework.get_cached_homework", get_cached_homework)
+core.symbol.export("homework.get_cached_homework_count", get_cached_homework_count)
+core.symbol.export("homework.get_last_refresh_time", get_last_refresh_time)
+core.symbol.export("homework.get_user_dying_homeworks", get_user_dying_homeworks)
+core.symbol.export(
+    "homework.get_user_homeworks_with_deadline", get_user_homeworks_with_deadline
+)
