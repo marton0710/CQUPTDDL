@@ -19,6 +19,7 @@ SINGLE_HOMEWORK_TEMPLATE = """## [{title}]({url})
 - 课程：{course}
 - 平台：{platform}
 - 截止时间：{deadline}"""
+HOMEWORK_ALL_DONE_TEMPLATE = "未发现{scope}小时内截止的作业"
 
 
 async def push_dying_homework(homework: Homework):
@@ -34,18 +35,22 @@ async def push_dying_homeworks(user_id: str, homeworks: Iterable[Homework]):
             _logger.warning("用户%s没有配置qqchan_id却触发了推送", user_id)
             return
 
-    homework_msgs: list[str] = []
-    for h in homeworks:
-        homework_msgs.append(
-            SINGLE_HOMEWORK_TEMPLATE.format(
-                title=h.title,
-                url=h.url,
-                course=h.course_name,
-                platform=h.platform,
-                deadline=h.deadline,
+    if not homeworks:
+        msg = HOMEWORK_ALL_DONE_TEMPLATE.format(scope=c.qq_push_scope)
+    else:
+        homework_msgs: list[str] = []
+        for h in homeworks:
+            homework_msgs.append(
+                SINGLE_HOMEWORK_TEMPLATE.format(
+                    title=h.title,
+                    url=h.url,
+                    course=h.course_name,
+                    platform=h.platform,
+                    deadline=h.deadline,
+                )
             )
-        )
-    msg = DYING_HOMEWORK_TEMPLATE.format(homeworks="\n".join(homework_msgs))
+        msg = DYING_HOMEWORK_TEMPLATE.format(homeworks="\n".join(homework_msgs))
+
     async with core.get_client() as client:
         try:
             resp = await client.post(

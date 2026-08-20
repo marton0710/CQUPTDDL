@@ -18,5 +18,5 @@ class QQPushConfig(SQLModel, table=True):
     )
     qq_push_at: time = Field(time(7), description="定时推送时刻")
     qq_push_scope: int = Field(
-        24, description="推送从推送时刻开始多长时间内截止的作业。单位：时"
+        24, description="推送从推送时刻开始多长时间内截止的作业。单位：时", ge=1
     )

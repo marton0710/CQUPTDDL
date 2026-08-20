@@ -29,9 +29,12 @@ async def _(
     _: Annotated[None, Depends(verify_api_key)],
     qqchan_id: str,
 ):
-    config: QQPushConfig = await core.symbol.call(
+    config: QQPushConfig | None = await core.symbol.call(
         "qqpush.get_user_config_from_qqchan_id", session, qqchan_id
     )
+    if config is None:
+        return "此ID没有绑定到平台，请先在个人中心完成绑定"
+
     homeworks: Iterable[Homework] = await core.symbol.call(
         "homework.get_user_dying_homeworks",
         session,
