@@ -23,6 +23,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(router.router)
+if core.config.FRONTEND_DIR:
+    app.frontend("/", directory=core.config.FRONTEND_DIR, fallback="index.html")
 
 
 def main():
