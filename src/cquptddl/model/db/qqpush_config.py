@@ -12,7 +12,7 @@ class QQPushConfig(SQLModel, table=True):
         ondelete="CASCADE",
         primary_key=True,
     )
-    qqchan_id: str | None = None
+    qqchan_id: str | None = Field(None, description="绑定id", index=True)
     qq_push_strategy: QQPushStrategyEnum = Field(
         QQPushStrategyEnum.SCHEDULED, description="推送策略"
     )

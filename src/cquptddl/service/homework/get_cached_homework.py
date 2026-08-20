@@ -71,11 +71,10 @@ async def delete_platform_homework(
 
 
 async def get_user_dying_homeworks(
-    user_id: str, scope: int | None = None
+    session: AsyncSession, user_id: str, scope: int | None = None
 ) -> Iterable[Homework]:
     if scope is None:
-        async with core.factory.get_session() as session:
-            c = await session.get(QQPushConfig, user_id)
+        c = await session.get(QQPushConfig, user_id)
         assert c is not None
         scope = c.qq_push_scope
 
@@ -87,21 +86,21 @@ async def get_user_dying_homeworks(
         .where(Homework.deadline > now)  # ty: ignore[unsupported-operator]
         .where(Homework.deadline < now + timedelta(hours=scope))  # ty: ignore[unsupported-operator]
     )
-    async with core.factory.get_session() as session:
-        resp = await session.execute(sql)
-        return resp.scalars().all()
+    resp = await session.execute(sql)
+    return resp.scalars().all()
 
 
-async def get_user_homeworks_with_deadline(user_id: str) -> Iterable[Homework]:
+async def get_user_homeworks_with_deadline(
+    session: AsyncSession, user_id: str
+) -> Iterable[Homework]:
     sql = (
         select(Homework)
         .where(Homework.user_id == user_id)
         .where(Homework.done == False)
         .where(Homework.deadline != None)
     )
-    async with core.factory.get_session() as session:
-        resp = await session.execute(sql)
-        return resp.scalars().all()
+    resp = await session.execute(sql)
+    return resp.scalars().all()
 
 
 core.bus.on(PlatformUnboundEvent, delete_platform_homework_event_callback)

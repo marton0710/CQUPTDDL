@@ -89,17 +89,23 @@ class ScheduledStrategy(QQPushStrategy):
         )
 
     async def _job(self):  # ty: ignore[invalid-method-override]
-        homeworks_to_push: Iterable[Homework] = await core.symbol.call(
-            "homework.get_user_dying_homeworks", self.user_id, self.qq_push_scope
-        )
+        async with core.factory.get_session() as session:
+            homeworks_to_push: Iterable[Homework] = await core.symbol.call(
+                "homework.get_user_dying_homeworks",
+                session,
+                self.user_id,
+                self.qq_push_scope,
+            )
         await push_dying_homeworks(self.user_id, homeworks_to_push)
 
 
 class RealtimeStrategy(QQPushStrategy):
     async def on_create(self):
-        for h in await core.symbol.call(
-            "homework.get_user_homeworks_with_deadline", self.user_id
-        ):
+        async with core.factory.get_session() as session:
+            homeworks: Iterable[Homework] = await core.symbol.call(
+                "homework.get_user_homeworks_with_deadline", session, self.user_id
+            )
+        for h in homeworks:
             assert h.deadline
             job: Job = self.scheduler.add_job(
                 self._job,

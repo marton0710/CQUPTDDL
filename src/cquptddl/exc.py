@@ -56,3 +56,8 @@ class PlatformNotBound(CquptddlException):
 class InvalidPlatformCookie(CquptddlException):
     status = 510
     detail = "平台cookie无效，请检查是否已过期"
+
+
+class WrongQQPushAPIKey(CquptddlException):
+    status = 403
+    detail = "你不能调用此接口"
