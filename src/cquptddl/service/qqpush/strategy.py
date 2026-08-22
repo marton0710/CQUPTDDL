@@ -96,6 +96,8 @@ class ScheduledStrategy(QQPushStrategy):
                 self.user_id,
                 self.qq_push_scope,
             )
+            if not homeworks_to_push:
+                return
         await push_dying_homeworks(self.user_id, homeworks_to_push)
 
 
