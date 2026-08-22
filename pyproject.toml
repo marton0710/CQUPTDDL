@@ -39,7 +39,7 @@ fuckids = { index = "Bail" }
 cquptddl = "cquptddl:main"
 
 [build-system]
-requires = ["uv_build>=0.11.14,<0.12.0"]
+requires = ["uv_build<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]

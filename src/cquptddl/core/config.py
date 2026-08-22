@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     # 数据库调试日志
     db_echo: bool = False
+    db_pool_pre_ping: bool = True
+    db_pool_recycle: int = 3600
 
     # 缓存基础时间
     homework_cache_base_ttl: int = 12 * 60 * 60

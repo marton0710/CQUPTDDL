@@ -3,7 +3,11 @@ from sqlmodel import SQLModel
 
 from .config import config
 
-engine = create_async_engine(config.DATABASE_URL)
+engine = create_async_engine(
+    config.DATABASE_URL,
+    pool_pre_ping=config.db_pool_pre_ping,
+    pool_recycle=config.db_pool_recycle,
+)
 
 _session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
