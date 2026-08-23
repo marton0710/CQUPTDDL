@@ -7,7 +7,8 @@ from httpx import URL
 from cquptddl import core
 from cquptddl.model.db import Homework
 from cquptddl.model.db.qqpush_config import QQPushConfig
-from cquptddl.model.event import InvalidQQChanIDEvent
+from cquptddl.model.event import AutoRefreshHomeworkFailedEvent, InvalidQQChanIDEvent
+from cquptddl.model.schema.platform import PlatformEnum
 
 _logger = getLogger(__name__)
 buffer: dict[str, list[Homework]] = {}
@@ -20,6 +21,9 @@ SINGLE_HOMEWORK_TEMPLATE = """## [{title}]({url})
 - 平台：{platform}
 - 截止时间：{deadline}"""
 HOMEWORK_ALL_DONE_TEMPLATE = "未发现{scope}小时内截止的作业"
+REFRESH_HOMEWORK_FAILED_NOTICE_TEMPLATE = (
+    "系统自动刷新{platform_name}平台作业时失败。请检查绑定状态，或联系管理员"
+)
 
 
 async def push_dying_homework(homework: Homework):
@@ -28,13 +32,7 @@ async def push_dying_homework(homework: Homework):
 
 
 async def push_dying_homeworks(user_id: str, homeworks: Iterable[Homework]):
-    async with core.factory.get_session() as session:
-        c = await session.get(QQPushConfig, user_id)
-        assert c
-        if c.qqchan_id is None:
-            _logger.warning("用户%s没有配置qqchan_id却触发了推送", user_id)
-            return
-
+    c = await _get_user_qqpush_config(user_id)
     if not homeworks:
         msg = HOMEWORK_ALL_DONE_TEMPLATE.format(scope=c.qq_push_scope)
     else:
@@ -50,25 +48,7 @@ async def push_dying_homeworks(user_id: str, homeworks: Iterable[Homework]):
                 )
             )
         msg = DYING_HOMEWORK_TEMPLATE.format(homeworks="\n".join(homework_msgs))
-
-    async with core.get_client() as client:
-        try:
-            resp = await client.post(
-                URL(core.config.QQBOT_URL).join("/qqchan/send"),
-                content=msg,
-                params={"id": c.qqchan_id, "ismarkdown": True},
-                headers={"X-API-Key": core.config.QQBOT_RECV_API_KEY},
-            )
-        except Exception as e:
-            _logger.error("推送异常", exc_info=e)
-        data: dict[str, bool | str] = resp.json()
-        if data["success"]:
-            return
-        if data["msg"] == "无此id":
-            core.bus.emit(InvalidQQChanIDEvent(uid=user_id))
-            _logger.warning("用户%s的qqchan_id是非法的", user_id)
-        else:
-            _logger.error("推送失败：%s", data["msg"])
+        await _push(c, msg, True)
 
 
 async def push_buffered_homeworks():
@@ -78,3 +58,50 @@ async def push_buffered_homeworks():
         for user_id, homeworks in buffer.items():
             await push_dying_homeworks(user_id, homeworks)
         buffer.clear()
+
+
+async def push_refresh_homework_failed_notice(
+    user_id: str, platform_name: PlatformEnum
+):
+    await _push(
+        await _get_user_qqpush_config(user_id),
+        REFRESH_HOMEWORK_FAILED_NOTICE_TEMPLATE.format(platform_name=platform_name),
+    )
+
+
+async def _get_user_qqpush_config(user_id: str) -> QQPushConfig:
+    async with core.get_session() as session:
+        c = await session.get(QQPushConfig, user_id)
+        assert c
+        return c
+
+
+async def _push(qqpush_config: QQPushConfig, msg: str, ismarkdown: bool = False):
+    if qqpush_config.qqchan_id is None:
+        _logger.debug("用户%s没有配置qq推送", qqpush_config.user_id)
+        return
+
+    async with core.factory.get_client() as client:
+        try:
+            resp = await client.post(
+                URL(core.config.QQBOT_URL).join("/qqchan/send"),
+                content=msg,
+                params={"id": qqpush_config.qqchan_id, "ismarkdown": ismarkdown},
+                headers={"X-API-Key": core.config.QQBOT_RECV_API_KEY},
+            )
+        except Exception as e:
+            _logger.error("推送异常", exc_info=e)
+        data: dict[str, bool | str] = resp.json()
+        if data["success"]:
+            return
+        if data["msg"] == "无此id":
+            core.bus.emit(InvalidQQChanIDEvent(uid=qqpush_config.user_id))
+            _logger.warning("用户%s的qqchan_id是非法的", qqpush_config.user_id)
+        else:
+            _logger.error("用户%s推送失败：%s", qqpush_config.user_id, data["msg"])
+
+
+core.bus.on(
+    AutoRefreshHomeworkFailedEvent,
+    lambda e: push_refresh_homework_failed_notice(e.uid, e.platform_name),
+)
