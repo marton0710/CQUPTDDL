@@ -48,7 +48,7 @@ async def push_dying_homeworks(user_id: str, homeworks: Iterable[Homework]):
                 )
             )
         msg = DYING_HOMEWORK_TEMPLATE.format(homeworks="\n".join(homework_msgs))
-        await _push(c, msg, True)
+    await _push(c, msg, True)
 
 
 async def push_buffered_homeworks():
@@ -56,7 +56,12 @@ async def push_buffered_homeworks():
         if not buffer:
             return
         for user_id, homeworks in buffer.items():
-            await push_dying_homeworks(user_id, homeworks)
+            try:
+                await push_dying_homeworks(user_id, homeworks)
+            except Exception as e:
+                _logger.error(
+                    "批量推送已缓冲的实时用户%s作业时发生异常", user_id, exc_info=e
+                )
         buffer.clear()
 
 
@@ -70,7 +75,7 @@ async def push_refresh_homework_failed_notice(
 
 
 async def _get_user_qqpush_config(user_id: str) -> QQPushConfig:
-    async with core.get_session() as session:
+    async with core.factory.get_session() as session:
         c = await session.get(QQPushConfig, user_id)
         assert c
         return c
@@ -91,6 +96,7 @@ async def _push(qqpush_config: QQPushConfig, msg: str, ismarkdown: bool = False)
             )
         except Exception as e:
             _logger.error("推送异常", exc_info=e)
+            return
         data: dict[str, bool | str] = resp.json()
         if data["success"]:
             return

@@ -15,6 +15,7 @@ async def configure_qqpush(
     session: AsyncSession, user: User, model: QQPushConfigSchema
 ):
     await session.merge(QQPushConfig(user_id=user.id, **model.model_dump()))
+    await session.commit()
     core.bus.emit(QQPushConfigChangedEvent(uid=user.id))
 
 
@@ -28,6 +29,7 @@ async def _clear_invalid_qqchan_id(event: InvalidQQChanIDEvent):
         c = await session.get(QQPushConfig, event.uid)
         assert c
         c.qqchan_id = None
+    core.bus.emit(QQPushConfigChangedEvent(uid=event.uid))
 
 
 core.bus.on(UserRegisterEvent, _generate_qqpush_config_after_register)
