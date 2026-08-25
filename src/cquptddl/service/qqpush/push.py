@@ -7,7 +7,11 @@ from httpx import URL
 from cquptddl import core
 from cquptddl.model.db import Homework
 from cquptddl.model.db.qqpush_config import QQPushConfig
-from cquptddl.model.event import AutoRefreshHomeworkFailedEvent, InvalidQQChanIDEvent
+from cquptddl.model.event import (
+    AutoRefreshHomeworkFailedEvent,
+    InvalidQQChanIDEvent,
+    UserReloginRequiredEvent,
+)
 from cquptddl.model.schema.platform import PlatformEnum
 
 _logger = getLogger(__name__)
@@ -24,6 +28,7 @@ HOMEWORK_ALL_DONE_TEMPLATE = "未发现{scope}小时内截止的作业"
 REFRESH_HOMEWORK_FAILED_NOTICE_TEMPLATE = (
     "系统自动刷新{platform_name}平台作业时失败。请检查绑定状态，或联系管理员"
 )
+RELOGIN_REQUIRED_NOTICE_TEMPLATE = "你的聚合截止线登录已过期，请重新登录"
 
 
 async def push_dying_homework(homework: Homework):
@@ -74,6 +79,11 @@ async def push_refresh_homework_failed_notice(
     )
 
 
+async def push_relogin_required_msg(user_id: str):
+    config = await _get_user_qqpush_config(user_id)
+    await _push(config, RELOGIN_REQUIRED_NOTICE_TEMPLATE)
+
+
 async def _get_user_qqpush_config(user_id: str) -> QQPushConfig:
     async with core.factory.get_session() as session:
         c = await session.get(QQPushConfig, user_id)
@@ -111,3 +121,4 @@ core.bus.on(
     AutoRefreshHomeworkFailedEvent,
     lambda e: push_refresh_homework_failed_notice(e.uid, e.platform_name),
 )
+core.bus.on(UserReloginRequiredEvent, lambda e: push_relogin_required_msg(e.uid))
