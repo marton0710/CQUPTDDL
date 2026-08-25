@@ -4,7 +4,11 @@ from sqlmodel import select
 
 from cquptddl import core
 from cquptddl.model.db.qqpush_config import QQPushConfig
-from cquptddl.model.event import AccountDeletedEvent, QQPushConfigChangedEvent
+from cquptddl.model.event import (
+    AccountDeletedEvent,
+    HomeworkRefreshedEvent,
+    QQPushConfigChangedEvent,
+)
 
 from .globals import scheduler, user_strategies
 from .push import push_buffered_homeworks
@@ -44,7 +48,7 @@ def unbind(user_id: str):
         old.clear()
 
 
-async def _refresh_user(e: QQPushConfigChangedEvent):
+async def _refresh_user(e: QQPushConfigChangedEvent | HomeworkRefreshedEvent):
     async with core.factory.get_session() as session:
         user_config = await session.get(QQPushConfig, e.uid)
         assert user_config
@@ -59,4 +63,5 @@ def _handle_account_delete_event(e: AccountDeletedEvent):
 
 
 core.bus.on(QQPushConfigChangedEvent, _refresh_user)
+core.bus.on(HomeworkRefreshedEvent, _refresh_user)
 core.bus.on(AccountDeletedEvent, _handle_account_delete_event)

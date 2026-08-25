@@ -136,7 +136,7 @@ wheels = [
 
 [[package]]
 name = "cquptddl"
-version = "1.99"
+version = "1.99+2"
 source = { editable = "." }
 dependencies = [
     { name = "abxbus" },
@@ -395,15 +395,15 @@ wheels = [
 
 [[package]]
 name = "meetschedule-sdk"
-version = "1.1.1"
+version = "1.2"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/19/c8/c1282103ec3b0b4d6224b9621a0cb36743b85af9af3200209341bdd21a9e/meetschedule_sdk-1.1.1.tar.gz", hash = "sha256:5d965af19f427f2d900f4905c5dba54b42c13e13a275aa25f91cd8e6c56cc78b", size = 16224, upload-time = "2026-08-03T10:24:13.115Z" }
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/ec/94/59975e42a80d07a065b5353d02607f09575f506d6f391a1af9b788ec2448/meetschedule_sdk-1.2.tar.gz", hash = "sha256:ce7b2a638ab645f7dc59f775c2a0cd47e1c7a2f5e55160b0e144c798ea655bf3", size = 12373, upload-time = "2026-08-21T10:55:16.301Z" }
 wheels = [
-    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/47/ab/f1dae02b3647da732c7fcce0214bed0efdcd48b4bb315b138e0221f71d60/meetschedule_sdk-1.1.1-py3-none-any.whl", hash = "sha256:3d8fbe981155a0f7832cbe59720d5973431f94434ca2c2c1058306cb46282292", size = 25148, upload-time = "2026-08-03T10:24:11.386Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/b6/33/26ce07bccd9b914f56b6e341ab9a8ca820092de8031d1a946027805fd87c/meetschedule_sdk-1.2-py3-none-any.whl", hash = "sha256:bb82570977db0ada05ebee80528020ef4d8a85ff3929f01d54129e8db65745ac", size = 17354, upload-time = "2026-08-21T10:55:14.25Z" },
 ]
 
 [[package]]

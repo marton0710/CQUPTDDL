@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from datetime import time
+from datetime import time, timedelta
 from logging import INFO, getLogger
 from uuid import UUID
 
@@ -58,8 +58,6 @@ class QQPushStrategy(ABC):
                 return RealtimeStrategy
 
     def _generate_job_id(self, homework_id: UUID | None = None) -> str:
-        # if self.qq_push_strategy == QQPushStrategyEnum.REALTIME and homework_id is None:
-        #     raise ValueError("实时推送任务需要设置作业id")
         return f"qqpush:{self.user_id}{f':{homework_id}' if homework_id else ''}"
 
     def _record_user_job(self, job: Job):
@@ -102,76 +100,24 @@ class ScheduledStrategy(QQPushStrategy):
 
 
 class RealtimeStrategy(QQPushStrategy):
-    _reminded: set[UUID]
-
     async def on_create(self):
-        self._reminded = set[UUID]()
-        # await self._reconcile()
-        job = self.scheduler.add_job(
-            self._job,
-            "interval",
-            id=self._generate_job_id(),
-            seconds=core.config.qqpush_realtime_reconcile_interval,
-        )
-        self._record_user_job(job)
-
-    async def _job(self):  # ty: ignore[invalid-method-override]
         async with core.factory.get_session() as session:
             homeworks: Iterable[Homework] = await core.symbol.call(
-                "homework.get_user_dying_homeworks",
-                session,
-                self.user_id,
-                self.qq_push_scope,
+                "homework.get_user_homeworks_with_deadline", session, self.user_id
             )
-        for h in homeworks:
-            if h.id not in self._reminded:
-                await push_dying_homework(h)
-                self._reminded.add(h.id)
-        self._reminded &= {
-            h.id for h in homeworks
-        }  # 离开窗口的释放，再次进入时重新提醒
+            for h in homeworks:
+                assert h.deadline
+                job = self.scheduler.add_job(
+                    self._job,
+                    kwargs={"homework_id": h.id},
+                    id=self._generate_job_id(h.id),
+                    next_run_time=h.deadline - timedelta(hours=self.qq_push_scope),
+                )
+                self._record_user_job(job)
 
-    # async def _job(self, homework_id: UUID):  # ty: ignore[invalid-method-override]
-    #     async with core.factory.get_session() as session:
-    #         h = await session.get(Homework, homework_id)
-    #         if h is None or h.done or h.id in self._reminded:
-    #             return  # 跳过已完成或已删除的作业
-    #     await push_dying_homework(h)
-    #     self._reminded.add(h.id)
-
-    # async def _reconcile(self):
-    #     async with core.factory.get_session() as session:
-    #         homeworks: Iterable[Homework] = await core.symbol.call(
-    #             "homework.get_user_dying_homeworks", session, self.user_id
-    #         )
-    #         desired = {h.id: h.deadline for h in homeworks}
-    #         for hid, run_at in desired.items():
-    #             if hid in self._reminded:
-    #                 continue
-
-    #             assert run_at is not None
-    #             run_at = run_at - timedelta(seconds=self.qq_push_scope)
-    #             job_id = self._generate_job_id(hid)
-    #             job: Job | None = self.scheduler.get_job(job_id)
-
-    #             # 全新作业
-    #             if job is None:
-    #                 job = self.scheduler.add_job(
-    #                     self._job,
-    #                     kwargs={"homework_id": hid},
-    #                     id=job_id,
-    #                     next_run_time=run_at,
-    #                 )
-    #                 self._record_user_job(job)
-
-    #             # 前向储备，当作业截止时间变更时生效
-    #             elif abs(job.next_run_time - run_at) > timedelta(seconds=30):
-    #                 job.reschedule(trigger=DateTrigger(run_date=run_at))
-
-    #         # 已经删除的作业
-    #         for job in self._user_jobs:
-    #             hid = job.id.split(":", 2)[-1]
-    #             if hid not in desired:
-    #                 with suppress(JobLookupError, ValueError):
-    #                     self._user_jobs.remove(job)
-    #                     self.scheduler.remove_job(job_id)
+    async def _job(self, homework_id: UUID):  # ty: ignore[invalid-method-override]
+        async with core.factory.get_session() as session:
+            h = await session.get(Homework, homework_id)
+            if h is None or h.done or h.deadline is None:
+                return  # 跳过已完成或已删除的作业
+        await push_dying_homework(h)

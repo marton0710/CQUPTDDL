@@ -22,9 +22,6 @@ class Settings(BaseSettings):
     # 请求冷却时间
     homework_cooldown_ttl: int = 30 * 60
 
-    # qq实时推送对账间隔时间
-    qqpush_realtime_reconcile_interval: int = 10 * 60
-
     # JWT相关
     SECRET_KEY: str
     ALGORITHM: str = "HS256"

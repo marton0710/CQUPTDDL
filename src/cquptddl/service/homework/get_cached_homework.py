@@ -90,4 +90,18 @@ async def get_user_dying_homeworks(
     return resp.scalars().all()
 
 
+async def get_user_homeworks_with_deadline(
+    session: AsyncSession, user_id: str
+) -> Iterable[Homework]:
+    now = datetime.now().astimezone()
+    sql = (
+        select(Homework)
+        .where(Homework.user_id == user_id)
+        .where(Homework.done == False)
+        .where(Homework.deadline > now)  # ty: ignore[unsupported-operator]
+    )
+    resp = await session.execute(sql)
+    return resp.scalars().all()
+
+
 core.bus.on(PlatformUnboundEvent, delete_platform_homework_event_callback)
