@@ -26,7 +26,6 @@ async def fetch_homework(
     Raises:
         PlatformNotBound: 用户没有绑定该平台
         InvalidPlatformCookie: 平台cookie无效
-
     """
     platform_info = await session.get(PlatformInfo, (user.id, platform_name))
     if platform_info is None:

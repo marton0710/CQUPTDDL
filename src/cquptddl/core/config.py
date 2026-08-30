@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     QQBOT_RECV_API_KEY: str  # 从后端发往qq机器人的报文所需的api_key
     QQBOT_SEND_API_KEY: str  # 从qq机器人发往后端
 
+    # meet课程表相关
+    meetschedule_sync_interval: int = 30 * 60
+
     FRONTEND_DIR: str | None = None
 
     # 读取.env，忽略额外字段

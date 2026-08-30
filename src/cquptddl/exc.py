@@ -61,3 +61,23 @@ class InvalidPlatformCookie(CquptddlException):
 class WrongQQPushAPIKey(CquptddlException):
     status = 403
     detail = "你不能调用此接口"
+
+
+class MeetscheduleBindingExisted(CquptddlException):
+    status = 409
+    detail = "你已经绑定过Meet课程表了，如需重新绑定，请先解绑"
+
+
+class InvalidMeetScheduleKey(CquptddlException):
+    status = 400
+    detail = "Meet课程表key无效"
+
+
+class MeetscheduleNotBound(CquptddlException):
+    status = 428
+    detail = "未绑定Meet课程表"
+
+
+class RaceLimitExceed(CquptddlException):
+    status = 429
+    detail = "服务器忙，请稍后重试"

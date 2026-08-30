@@ -79,18 +79,22 @@ async def _(
 ) -> Userinfo:
     qqpush_config = await session.get(QQPushConfig, user.id)
     meetschedule_config = await session.get(MeetscheduleConfig, user.id)
-    assert qqpush_config and meetschedule_config is not None
+    assert qqpush_config is not None
 
     qqpush_config_data = qqpush_config.model_dump()
-    meetschedule_config_data = meetschedule_config.model_dump()
-
     del qqpush_config_data["user_id"]
-    del meetschedule_config_data["user_id"]
-    meetschedule_config_data["meetschedule_key"] = (
-        None
-        if meetschedule_config_data["meetschedule_key"] is None
-        else "******" + meetschedule_config_data["meetschedule_key"][-4:]
-    )
+
+    if meetschedule_config is None:
+        meetschedule_config_data = None
+    else:
+        meetschedule_config_data = meetschedule_config.model_dump()
+        del meetschedule_config_data["user_id"]
+        del meetschedule_config_data["schedule_id"]
+        meetschedule_config_data["meetschedule_key"] = (
+            None
+            if meetschedule_config_data["meetschedule_key"] is None
+            else "******" + meetschedule_config_data["meetschedule_key"][-4:]
+        )
 
     return Userinfo(
         name=user.name,

@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -17,11 +19,11 @@ async def refresh_homework(
     """
 
     # 获取所有作业
-    homeworks = list(
+    homeworks = list[Homework](
         await core.symbol.call("platform.fetch_homework", session, user, platform_name)
     )
 
-    # 落库
+    # 落库并找出新增的作业id
     stored_homework_ids = set(
         (
             await session.execute(
@@ -33,13 +35,20 @@ async def refresh_homework(
         .scalars()
         .all()
     )
+    new_homework_ids = set[UUID]()
     for h in homeworks:
         if h.id not in stored_homework_ids:
             session.add(h)
+            new_homework_ids.add(h.id)
         stored_homework_ids.discard(h.id)
 
     # 删除不存在的作业
     # await session.execute(
     #     delete(Homework).where(Homework.id.in_(stored_homework_ids))  # ty: ignore[unresolved-attribute, unused-ignore-comment]
     # )
-    core.bus.emit(HomeworkRefreshedEvent(uid=user.id, platform_name=platform_name))
+    await session.commit()
+    core.bus.emit(
+        HomeworkRefreshedEvent(
+            uid=user.id, platform_name=platform_name, new_homework_ids=new_homework_ids
+        )
+    )

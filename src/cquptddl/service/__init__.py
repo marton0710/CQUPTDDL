@@ -11,8 +11,10 @@ async def init():
     ).disabled = not core.config.DEBUG
     await homework.refresh_task.init_refresh_task()
     await qqpush.on_boot.on_boot()
+    meetschedule.start_refresh()
 
 
 async def shutdown():
     homework.refresh_task.scheduler.shutdown()
     qqpush.globals.scheduler.shutdown()
+    meetschedule.shutdown_refresh()

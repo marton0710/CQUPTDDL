@@ -35,3 +35,11 @@ class Homework(SQLModel, table=True):
             UUID_NAMESPACE_HOMEWORK_ID,
             user_id + platform + course_name + title,
         )
+
+    def __eq__(self, b):
+        if not isinstance(b, Homework):
+            return False
+        return self.id == b.id
+
+    def __hash__(self):
+        return hash(self.id)

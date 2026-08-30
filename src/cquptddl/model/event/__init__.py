@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from abxbus import BaseEvent
 
 from cquptddl.model.schema.platform import PlatformEnum
@@ -18,6 +20,13 @@ class UserLoginEvent(BaseEvent):
 class HomeworkRefreshedEvent(BaseEvent):
     uid: str
     platform_name: PlatformEnum
+    new_homework_ids: set[UUID]
+
+
+class HomeworkDoneEvent(BaseEvent):
+    """完成状态变化时触发，可能是变成完成，也可能是变成未完成"""
+
+    homework_id: UUID
 
 
 class PlatformBoundEvent(BaseEvent):

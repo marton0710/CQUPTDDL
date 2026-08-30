@@ -17,6 +17,6 @@ class Userinfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(description="用户姓名")
     qqpush_config: QQPushConfigSchema = Field(description="qq推送配置")
-    meetschedule_config: MeetscheduleConfigSchema = Field(
+    meetschedule_config: MeetscheduleConfigSchema | None = Field(
         description="meet课程表同步配置"
     )
