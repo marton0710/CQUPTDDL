@@ -78,6 +78,11 @@ class MeetscheduleNotBound(CquptddlException):
     detail = "未绑定Meet课程表"
 
 
+class MeetscheduleKeyPermissionDenied(CquptddlException):
+    status = 403
+    detail = "Meet课程表key权限不足。至少需要：读取课表、读取事件、写入事件"
+
+
 class RaceLimitExceed(CquptddlException):
     status = 429
     detail = "服务器忙，请稍后重试"
