@@ -170,7 +170,9 @@ async def sync_done_status_for_all_tracked_homeworks():
 
 
 async def _on_recv_new_homework(event: HomeworkRefreshedEvent):
+    _logger.debug("收到作业刷新事件")
     if not event.new_homework_ids:
+        _logger.debug("没有发现新作业")
         return
 
     async with core.factory.get_session() as session:
@@ -183,6 +185,7 @@ async def _on_recv_new_homework(event: HomeworkRefreshedEvent):
         sql = select(Homework).where(Homework.id.in_(event.new_homework_ids))  # ty: ignore[unresolved-attribute]
         resp = await session.execute(sql)
         new_homeworks = resp.scalars().all()
+        _logger.debug("发现新作业：%s", [i.title for i in new_homeworks])
 
         # 执行操作
         try:

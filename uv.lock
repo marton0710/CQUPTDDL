@@ -197,7 +197,7 @@ wheels = [
 
 [[package]]
 name = "fuckids"
-version = "2.4"
+version = "2.5.1"
 source = { registry = "https://pypi.bail.asia/simple/" }
 dependencies = [
     { name = "bs4" },
@@ -208,7 +208,7 @@ dependencies = [
     { name = "pydantic" },
 ]
 wheels = [
-    { url = "https://pypi.bail.asia/packages/fuckids-2.4-py3-none-any.whl", hash = "sha256:81402c8e8ade4b810fa9d4b2dab221676bc49e15f9ac8b4a22dc49bc2b285ee4" },
+    { url = "https://pypi.bail.asia/packages/fuckids-2.5.1-py3-none-any.whl", hash = "sha256:00b43c1cd394ead0097411d95449307b971d42abe450e77a6c365e506711f046" },
 ]
 
 [[package]]
@@ -385,15 +385,15 @@ wheels = [
 
 [[package]]
 name = "meetschedule-sdk"
-version = "1.2.1"
+version = "1.3"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/e0/1e/32192de57af1baefa9899f2039cd47157855592b0bf502280a7cc80149d3/meetschedule_sdk-1.2.1.tar.gz", hash = "sha256:8382a334b22d005c23aaa72ef321a0150e02e85bcaf1f557cdc32a5b036535dd", size = 12391, upload-time = "2026-08-29T03:48:31.27Z" }
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/8e/da/17873aa1d57b742529c494dc76ae4e3fde243a94e1ad6d406a37b06a2dd6/meetschedule_sdk-1.3.tar.gz", hash = "sha256:00ab46e687e7b94aa1d96ca07993a3852a51f1ee4a173e5195f75e9275c825e4", size = 14648, upload-time = "2026-08-31T02:00:23.133Z" }
 wheels = [
-    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/ed/04/05105924a9d54d072e83b349340b2e4215d0d41dc5393cbeb2da842cb633/meetschedule_sdk-1.2.1-py3-none-any.whl", hash = "sha256:62a106e77acfdc0a99c3c2016271d91feda271d8ce4d4f77994e258812c2dfbb", size = 17354, upload-time = "2026-08-29T03:48:29.599Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/dd/bc/0edd97c90c9a1af85dcd9c19222a040db9daa33ac7853ca0ff4c014928ac/meetschedule_sdk-1.3-py3-none-any.whl", hash = "sha256:bc7701ea4a97d80e6a27599f42371f8fe3cbdd6c3693ece479404684361b42e4", size = 20282, upload-time = "2026-08-31T02:00:21.858Z" },
 ]
 
 [[package]]

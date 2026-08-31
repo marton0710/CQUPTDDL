@@ -1,13 +1,18 @@
-import traceback
+import uuid
+from logging import INFO, getLogger
 from typing import Any
 
 import fuckids
 from httpx import AsyncClient
 
 from cquptddl import core
-from cquptddl.exc import LoginFailed
+from cquptddl.exc import LoginFailed, QRLoginSessionNotFound
 
 from .const import IDS_GET_USERINFO_SERVICE
+
+_qrcode_login_sessions = dict[uuid.UUID, fuckids.AsyncContext]()  # XXX: 内存泄漏怎么整
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
 
 
 async def password_login(
@@ -40,7 +45,53 @@ async def password_login(
         try:
             uid, name = await _get_userinfo(ctx.client)
         except Exception as e:
-            traceback.print_exc()
+            _logger.error("获取用户信息失败", exc_info=e)
+            raise LoginFailed("获取用户信息失败") from e
+
+    return uid, name, _get_ids_cookies(ctx.client)
+
+
+async def get_login_qrcode() -> tuple[str, uuid.UUID]:
+    """获取登录二维码
+    Returns:
+        qrcode_url: 二维码内容
+        session_id: 登录会话id
+    """
+    session_id = uuid.uuid4()
+    async with core.factory.get_client() as client:
+        qrcode_url, ctx = await fuckids.get_qrcode_async(
+            IDS_GET_USERINFO_SERVICE, client=client
+        )
+    _qrcode_login_sessions[session_id] = ctx
+    return qrcode_url, session_id
+
+
+async def qrcode_login(session_id: uuid.UUID) -> tuple[str, str, dict[str, str]]:
+    """
+    进行二维码登录
+    Returns:
+        uid: 统一认证码
+        name: 姓名
+        cookies: 登录时下发的cookies
+    """
+    try:
+        ctx = _qrcode_login_sessions[session_id]
+    except KeyError as e:
+        raise QRLoginSessionNotFound from e
+
+    cookies = ctx.client.cookies
+    async with core.factory.get_client(cookies=cookies) as client:
+        ctx.client = client
+        try:
+            await fuckids.qrcode_login_async(ctx)
+        except Exception as e:
+            _logger.error("二位码登录失败", exc_info=e)
+            raise LoginFailed("无法登录你的账号") from e
+
+        try:
+            uid, name = await _get_userinfo(ctx.client)
+        except Exception as e:
+            _logger.error("获取用户信息失败", exc_info=e)
             raise LoginFailed("获取用户信息失败") from e
 
     return uid, name, _get_ids_cookies(ctx.client)

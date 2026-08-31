@@ -50,7 +50,55 @@ async def password_login(
         user.ids_cookie = cookies
 
     core.bus.emit(UserLoginEvent(uid=uid))
-    _logger.info("用户%s已登录", uid)
+    _logger.info("用户%s已通过密码登录", uid)
+    return (
+        crypto.generate_token(uid, user.token_version, False),
+        crypto.generate_token(uid, user.token_version, True),
+        name,
+    )
+
+
+async def get_login_qrcode() -> tuple[str, uuid.UUID]:
+    """获取登录二维码内容
+    Returns:
+        qrcode_url: 二维码内容（ids链接）
+        session_id: 二位码登录会话id
+    """
+    return await ids.get_login_qrcode()
+
+
+async def qrcode_login(
+    session: AsyncSession, qrlogin_session_id: uuid.UUID, clear_password: bool
+) -> tuple[str, str, str]:
+    """扫码登录系统
+    Returns:
+        access_token
+        refresh_token
+        name
+
+    Raises:
+        LoginFailed:
+    """
+    uid, name, cookies = await ids.qrcode_login(qrlogin_session_id)
+    old_user = await session.get(User, uid)
+    if old_user is None:
+        user = User(
+            id=uid,
+            password=None,
+            ids_cookie=cookies,
+            name=name,
+            token_version=uuid.uuid7(),
+        )
+        session.add(user)
+        core.bus.emit(UserRegisterEvent(uid=uid))
+    else:
+        user = old_user
+        if clear_password:
+            user.password = None
+        user.ids_cookie = cookies
+
+    core.bus.emit(UserLoginEvent(uid=uid))
+    _logger.info("用户%s已通过二维码登录", uid)
     return (
         crypto.generate_token(uid, user.token_version, False),
         crypto.generate_token(uid, user.token_version, True),

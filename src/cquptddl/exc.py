@@ -19,6 +19,11 @@ class WrongPassword(LoginFailed):
     detail = "用户名或密码错误"
 
 
+class QRLoginSessionNotFound(LoginFailed):
+    status = 404
+    detail = "找不到此会话"
+
+
 class InvalidToken(CquptddlException):
     status = 401
     detail = "无效的token"
