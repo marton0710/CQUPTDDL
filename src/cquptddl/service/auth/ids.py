@@ -73,6 +73,10 @@ async def qrcode_login(session_id: uuid.UUID) -> tuple[str, str, dict[str, str]]
         uid: 统一认证码
         name: 姓名
         cookies: 登录时下发的cookies
+    Raises:
+        QRLoginSessionNotFound:
+        QRCodeNotScanned:
+        LoginFailed:
     """
     try:
         ctx = _qrcode_login_sessions[session_id]
@@ -84,11 +88,13 @@ async def qrcode_login(session_id: uuid.UUID) -> tuple[str, str, dict[str, str]]
         ctx.client = client
         try:
             await fuckids.qrcode_login_async(ctx)
-        except fuckids.DataRequired as e:
+        except fuckids.errors.DataRequired as e:
             if e.keys != ["qrcode_scanned"]:
                 _logger.error("二位码登录失败", exc_info=e)
                 raise LoginFailed("无法登录你的账号") from e
             raise QRCodeNotScanned(ctx.qrcode_status)
+        except fuckids.errors.QRCodeExpired as e:
+            raise QRCodeNotScanned(fuckids.context.QRCodeStatus.EXPIRED) from e
         except Exception as e:
             _logger.error("二位码登录失败", exc_info=e)
             raise LoginFailed("无法登录你的账号") from e
