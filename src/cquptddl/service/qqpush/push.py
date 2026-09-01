@@ -1,14 +1,17 @@
 import asyncio
 from collections.abc import Iterable
 from logging import getLogger
+from uuid import UUID
 
 from httpx import URL
+from sqlmodel import select
 
 from cquptddl import core
 from cquptddl.model.db import Homework
 from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.event import (
     AutoRefreshHomeworkFailedEvent,
+    HomeworkRefreshedEvent,
     InvalidQQChanIDEvent,
     UserReloginRequiredEvent,
 )
@@ -19,6 +22,8 @@ buffer: dict[str, list[Homework]] = {}
 _buffer_lock = asyncio.Lock()
 
 DYING_HOMEWORK_TEMPLATE = """# 临期作业提醒
+{homeworks}"""
+NEW_HOMEWORK_TEMPLATE = """# 新作业提醒
 {homeworks}"""
 SINGLE_HOMEWORK_TEMPLATE = """## [{title}]({url})
 - 课程：{course}
@@ -53,6 +58,31 @@ async def push_dying_homeworks(user_id: str, homeworks: Iterable[Homework]):
                 )
             )
         msg = DYING_HOMEWORK_TEMPLATE.format(homeworks="\n".join(homework_msgs))
+    await _push(c, msg, True)
+
+
+async def push_new_homeworks(user_id: str, homework_ids: Iterable[UUID]):
+    if not homework_ids:
+        return
+
+    async with core.factory.get_session() as session:
+        sql = select(Homework).where(Homework.id.in_(homework_ids))  # ty: ignore[unresolved-attribute]
+        resp = await session.execute(sql)
+        homeworks = resp.scalars().all()
+
+    c = await _get_user_qqpush_config(user_id)
+    homework_msgs = list[str]()
+    for h in homeworks:
+        homework_msgs.append(
+            SINGLE_HOMEWORK_TEMPLATE.format(
+                title=h.title,
+                url=h.url,
+                course=h.course_name,
+                platform=h.platform,
+                deadline=h.deadline,
+            )
+        )
+    msg = NEW_HOMEWORK_TEMPLATE.format(homeworks="\n".join(homework_msgs))
     await _push(c, msg, True)
 
 
@@ -122,3 +152,6 @@ core.bus.on(
     lambda e: push_refresh_homework_failed_notice(e.uid, e.platform_name),
 )
 core.bus.on(UserReloginRequiredEvent, lambda e: push_relogin_required_msg(e.uid))
+core.bus.on(
+    HomeworkRefreshedEvent, lambda e: push_new_homeworks(e.uid, e.new_homework_ids)
+)
