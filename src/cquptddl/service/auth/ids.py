@@ -6,7 +6,7 @@ import fuckids
 from httpx import AsyncClient
 
 from cquptddl import core
-from cquptddl.exc import LoginFailed, QRLoginSessionNotFound
+from cquptddl.exc import LoginFailed, QRCodeNotScanned, QRLoginSessionNotFound
 
 from .const import IDS_GET_USERINFO_SERVICE
 
@@ -84,6 +84,11 @@ async def qrcode_login(session_id: uuid.UUID) -> tuple[str, str, dict[str, str]]
         ctx.client = client
         try:
             await fuckids.qrcode_login_async(ctx)
+        except fuckids.DataRequired as e:
+            if e.keys != ["qrcode_scanned"]:
+                _logger.error("二位码登录失败", exc_info=e)
+                raise LoginFailed("无法登录你的账号") from e
+            raise QRCodeNotScanned(ctx.qrcode_status)
         except Exception as e:
             _logger.error("二位码登录失败", exc_info=e)
             raise LoginFailed("无法登录你的账号") from e

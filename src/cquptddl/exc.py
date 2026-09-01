@@ -24,6 +24,11 @@ class QRLoginSessionNotFound(LoginFailed):
     detail = "找不到此会话"
 
 
+class QRCodeNotScanned(LoginFailed):
+    status = 202
+    detail = "二维码未扫描"
+
+
 class InvalidToken(CquptddlException):
     status = 401
     detail = "无效的token"
