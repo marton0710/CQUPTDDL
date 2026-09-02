@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     QQBOT_SEND_API_KEY: str  # 从qq机器人发往后端
 
     # meet课程表相关
-    meetschedule_sync_interval: int = 30 * 60
+    meetschedule_sync_interval: int = 5 * 60
 
     FRONTEND_DIR: str | None = None
 

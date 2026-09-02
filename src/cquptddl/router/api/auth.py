@@ -136,9 +136,10 @@ async def _(
         del meetschedule_config_data["schedule_id"]
         meetschedule_config_data["meetschedule_key"] = (
             None
-            if meetschedule_config_data["meetschedule_key"] is None
-            else "******" + meetschedule_config_data["meetschedule_key"][-4:]
+            if meetschedule_config_data["api_key"] is None
+            else "******" + meetschedule_config_data["api_key"][-4:]
         )
+        del meetschedule_config_data["api_key"]
 
     return Userinfo(
         name=user.name,

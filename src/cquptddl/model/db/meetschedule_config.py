@@ -8,5 +8,5 @@ class MeetscheduleConfig(SQLModel, table=True):
         ondelete="CASCADE",
         primary_key=True,
     )
-    meetschedule_key: str = Field(unique=True)
+    api_key: str = Field(unique=True)
     schedule_id: str = Field(description="要同步到的课程表id")

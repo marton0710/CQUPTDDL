@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import HTTPException
 
 
@@ -96,3 +98,10 @@ class MeetscheduleKeyPermissionDenied(CquptddlException):
 class RaceLimitExceed(CquptddlException):
     status = 429
     detail = "服务器忙，请稍后重试"
+
+
+class _MeetscheduleBatchActionFailed(CquptddlException):
+    def __init__(self, failed_homework_ids: set[UUID], pending_homework_ids: set[UUID]):
+        self.failed_homework_ids = failed_homework_ids
+        self.pending_homework_ids = pending_homework_ids
+        return super().__init__("批量操作时部分作业失败", 500)  # noqa: PLE0101
