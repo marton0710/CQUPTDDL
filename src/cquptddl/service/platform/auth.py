@@ -57,8 +57,7 @@ async def relogin(
     Returns:
         new_cookies
     """
-    platform_info = await session.get(PlatformInfo, (user.id, platform_name))
-    assert platform_info is not None
+    platform_info = await session.get_one(PlatformInfo, (user.id, platform_name))
     platform = Platform.get_platform_by_name(platform_name)
     credentials = AuthMethod(platform.auth_method).model_class.model_validate_json(
         core.symbol.call("crypto.aes_decrypt", platform_info.credentials)

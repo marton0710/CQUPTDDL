@@ -116,9 +116,7 @@ async def push_relogin_required_msg(user_id: str):
 
 async def _get_user_qqpush_config(user_id: str) -> QQPushConfig:
     async with core.factory.get_session() as session:
-        c = await session.get(QQPushConfig, user_id)
-        assert c
-        return c
+        return await session.get_one(QQPushConfig, user_id)
 
 
 async def _push(qqpush_config: QQPushConfig, msg: str, ismarkdown: bool = False):

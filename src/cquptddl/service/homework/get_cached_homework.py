@@ -74,8 +74,7 @@ async def get_user_dying_homeworks(
     session: AsyncSession, user_id: str, scope: int | None = None
 ) -> Iterable[Homework]:
     if scope is None:
-        c = await session.get(QQPushConfig, user_id)
-        assert c is not None
+        c = await session.get_one(QQPushConfig, user_id)
         scope = c.qq_push_scope
 
     now = datetime.now().astimezone()

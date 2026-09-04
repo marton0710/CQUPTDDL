@@ -26,8 +26,7 @@ async def _generate_qqpush_config_after_register(event: UserRegisterEvent):
 
 async def _clear_invalid_qqchan_id(event: InvalidQQChanIDEvent):
     async with core.factory.get_session() as session:
-        c = await session.get(QQPushConfig, event.uid)
-        assert c
+        c = await session.get_one(QQPushConfig, event.uid)
         c.qqchan_id = None
     core.bus.emit(QQPushConfigChangedEvent(uid=event.uid))
 

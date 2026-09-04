@@ -121,9 +121,8 @@ async def _(
     session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
     user: Annotated[User, Depends(need_login)],
 ) -> Userinfo:
-    qqpush_config = await session.get(QQPushConfig, user.id)
+    qqpush_config = await session.get_one(QQPushConfig, user.id)
     meetschedule_config = await session.get(MeetscheduleConfig, user.id)
-    assert qqpush_config is not None
 
     qqpush_config_data = qqpush_config.model_dump()
     del qqpush_config_data["user_id"]

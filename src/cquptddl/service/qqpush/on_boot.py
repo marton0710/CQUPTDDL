@@ -50,8 +50,7 @@ def unbind(user_id: str):
 
 async def _refresh_user(e: QQPushConfigChangedEvent | HomeworkRefreshedEvent):
     async with core.factory.get_session() as session:
-        user_config = await session.get(QQPushConfig, e.uid)
-        assert user_config
+        user_config = await session.get_one(QQPushConfig, e.uid)
         if user_config.qqchan_id is None:  # 解绑情况
             unbind(user_config.user_id)
         else:
