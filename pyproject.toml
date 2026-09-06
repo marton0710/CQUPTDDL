@@ -1,6 +1,6 @@
 [project]
 name = "cquptddl"
-version = "1.99+4"
+version = "2.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [

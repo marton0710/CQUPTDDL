@@ -13,14 +13,13 @@ class Settings(BaseSettings):
     db_pool_pre_ping: bool = True
     db_pool_recycle: int = 3600
 
-    # 缓存基础时间
-    homework_cache_base_ttl: int = 12 * 60 * 60
+    # 登录相关
+    qr_login_session_ttl: int = 3 * 60  # 二维码会话过期事件，取值来自ids二维码过期事件
 
-    # 缓存偏移时间（仅向后偏移）
-    homework_cache_jitter: int = 30 * 60
-
-    # 请求冷却时间
-    homework_cooldown_ttl: int = 30 * 60
+    # 作业相关
+    homework_cache_base_ttl: int = 12 * 60 * 60  # 缓存基础时间
+    homework_cache_jitter: int = 30 * 60  # 缓存偏移时间（仅向后偏移）
+    homework_cooldown_ttl: int = 30 * 60  # 请求冷却时间
 
     # JWT相关
     SECRET_KEY: str

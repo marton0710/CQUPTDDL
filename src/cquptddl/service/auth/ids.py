@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta
 from logging import INFO, getLogger
 from typing import Any
 
@@ -10,7 +11,9 @@ from cquptddl.exc import LoginFailed, QRCodeNotScanned, QRLoginSessionNotFound
 
 from .const import IDS_GET_USERINFO_SERVICE
 
-_qrcode_login_sessions = dict[uuid.UUID, fuckids.AsyncContext]()  # XXX: 内存泄漏怎么整
+_qrcode_login_sessions = dict[
+    uuid.UUID, tuple[fuckids.AsyncContext, datetime]
+]()  # {会话ID: (会话, 会话创建时间)}
 _logger = getLogger(__name__)
 _logger.setLevel(INFO)
 
@@ -57,12 +60,13 @@ async def get_login_qrcode() -> tuple[str, uuid.UUID]:
         qrcode_url: 二维码内容
         session_id: 登录会话id
     """
+    _clear_expired_qrlogin_session()
     session_id = uuid.uuid4()
     async with core.factory.get_client() as client:
         qrcode_url, ctx = await fuckids.get_qrcode_async(
             IDS_GET_USERINFO_SERVICE, client=client
         )
-    _qrcode_login_sessions[session_id] = ctx
+    _qrcode_login_sessions[session_id] = (ctx, datetime.now().astimezone())
     return qrcode_url, session_id
 
 
@@ -79,7 +83,7 @@ async def qrcode_login(session_id: uuid.UUID) -> tuple[str, str, dict[str, str]]
         LoginFailed:
     """
     try:
-        ctx = _qrcode_login_sessions[session_id]
+        ctx = _qrcode_login_sessions[session_id][0]
     except KeyError as e:
         raise QRLoginSessionNotFound from e
 
@@ -94,10 +98,14 @@ async def qrcode_login(session_id: uuid.UUID) -> tuple[str, str, dict[str, str]]
                 raise LoginFailed("无法登录你的账号") from e
             raise QRCodeNotScanned(ctx.qrcode_status)
         except fuckids.errors.QRCodeExpired as e:
+            del _qrcode_login_sessions[session_id]
             raise QRCodeNotScanned(fuckids.context.QRCodeStatus.EXPIRED) from e
         except Exception as e:
             _logger.error("二位码登录失败", exc_info=e)
+            del _qrcode_login_sessions[session_id]
             raise LoginFailed("无法登录你的账号") from e
+        else:
+            del _qrcode_login_sessions[session_id]
 
         try:
             uid, name = await _get_userinfo(ctx.client)
@@ -125,3 +133,14 @@ def _get_ids_cookies(client: AsyncClient) -> dict[str, str]:
         for item in client.cookies.jar
         if item.domain == "ids.cqupt.edu.cn" and item.value
     }
+
+
+def _clear_expired_qrlogin_session():
+    now = datetime.now().astimezone()
+    expired_session_ids = {
+        id
+        for id, (_, created_at) in _qrcode_login_sessions.items()
+        if now - created_at >= timedelta(seconds=core.config.qr_login_session_ttl)
+    }
+    for i in expired_session_ids:
+        _qrcode_login_sessions.pop(i, None)
