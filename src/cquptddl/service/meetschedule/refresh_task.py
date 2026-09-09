@@ -435,7 +435,7 @@ async def _push_singly(
             try:
                 ev = await meet.events.create(ev_input, allow_duplicate_title=True)
             except (UnprocessableEntityError, ConflictError) as exc:
-                _logger.warning("创建作业%s永久失败", hid, exc_info=exc)
+                _logger.warning("创建作业%s永久失败: %s", hid, exc)
                 outcomes.append(ItemOutcome(hid, RemoteResult.PERMANENT))
                 continue
             except UnauthorizedError, ForbiddenError:
