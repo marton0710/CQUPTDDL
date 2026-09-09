@@ -60,6 +60,11 @@ class InvalidPlatformCredentialFormat(CquptddlException):
     detail = "平台凭据格式不正确"
 
 
+class BindPlatformFailed(CquptddlException):
+    status = 500
+    detail = "绑定平台失败"
+
+
 class PlatformNotBound(CquptddlException):
     status = 428
     detail = "请先绑定该平台"

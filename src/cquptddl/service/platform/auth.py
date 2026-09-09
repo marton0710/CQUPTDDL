@@ -1,14 +1,19 @@
 from datetime import datetime
+from logging import INFO, getLogger
+from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
-from cquptddl.exc import InvalidPlatformCredentialFormat
+from cquptddl.exc import BindPlatformFailed, InvalidPlatformCredentialFormat
 from cquptddl.model.db import PlatformInfo, User
 from cquptddl.model.event import PlatformBoundEvent, PlatformUnboundEvent
 from cquptddl.model.schema.platform import AllAuthInputs, AuthMethod, PlatformEnum
 
 from .base import Platform
+
+_logger = getLogger(__name__)
+_logger.setLevel(INFO)
 
 
 def get_auth_method(platform_name: PlatformEnum) -> AuthMethod:
@@ -26,7 +31,12 @@ async def bind(
         raise InvalidPlatformCredentialFormat
 
     async with core.factory.get_client() as client:
-        cookies = await platform.login(client, user, credentials)
+        try:
+            cookies = await platform.login(client, user, credentials)
+        except Exception as e:
+            errno = uuid4()
+            _logger.error("绑定平台时发生异常，错误码：%s", errno, exc_info=e)
+            raise BindPlatformFailed(f"绑定平台失败，错误码：{errno}") from e
 
     credentials_to_save = core.symbol.call(
         "crypto.aes_encrypt", credentials.model_dump_json()
