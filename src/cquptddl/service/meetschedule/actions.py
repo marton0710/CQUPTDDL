@@ -1,19 +1,19 @@
 import uuid
 from collections.abc import Iterable
-from datetime import datetime
 from itertools import batched
 from logging import INFO, getLogger
 
 import meetschedule_sdk
 from meetschedule_sdk import (
     AsyncMeetSchedule,
-    UnprocessableEntityError,
+    Scope,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 from cquptddl import core
 from cquptddl.exc import (
+    CquptddlException,
     InvalidMeetScheduleKey,
     MeetscheduleBindingExisted,
     MeetscheduleKeyPermissionDenied,
@@ -30,6 +30,11 @@ from . import limiter
 
 _logger = getLogger(__name__)
 _logger.setLevel(INFO)
+_needed_meetschedule_key_permissions = {
+    Scope.SCHEDULE_READ,
+    Scope.ENTITIES_READ,
+    Scope.ENTITIES_WRITE,
+}
 
 
 async def bind(session: AsyncSession, user_id: str, key: str):
@@ -44,6 +49,21 @@ async def bind(session: AsyncSession, user_id: str, key: str):
         raise MeetscheduleBindingExisted
 
     async with AsyncMeetSchedule(key) as meet, limiter.acquire(meet):
+        # 检查key的权限
+        try:
+            async with limiter.acquire(meet, block=False):
+                scopes = (await meet.key.get()).scopes
+                if not all(p in scopes for p in _needed_meetschedule_key_permissions):
+                    raise MeetscheduleKeyPermissionDenied
+        except CquptddlException:
+            raise
+        except Exception as e:
+            errno = uuid.uuid4()
+            _logger.error("检查key权限时发生异常，错误码：%s", errno, exc_info=e)
+            raise CquptddlException(
+                f"检查key权限时发生异常，错误码：{errno}，请联系管理员"
+            ) from e
+
         # 查询现在的schedule_id
         try:
             now_schedule = await meet.schedules.get_current()
@@ -51,27 +71,6 @@ async def bind(session: AsyncSession, user_id: str, key: str):
             raise InvalidMeetScheduleKey from e
         except meetschedule_sdk.ForbiddenError as e:
             raise MeetscheduleKeyPermissionDenied from e
-
-        # 检查key的权限 FIXME: 可能会炸，等待上游专用接口
-        try:
-            async with limiter.acquire(meet, block=False):
-                test_event = await meet.events.create(
-                    meetschedule_sdk.EventInput(
-                        schedule_id=now_schedule.id,
-                        type=meetschedule_sdk.EventType.HOMEWORK,
-                        title=f"测试作业_{uuid.uuid4()}",
-                        time_mode=meetschedule_sdk.TimeMode.DUE_ONLY,
-                        end_at=datetime.now().astimezone().isoformat(),
-                    )
-                )
-            async with limiter.acquire(meet, block=False):
-                await meet.events.get(test_event.id)
-            async with limiter.acquire(meet, block=False):
-                await meet.events.delete(test_event.id)
-        except meetschedule_sdk.ForbiddenError as e:
-            raise MeetscheduleKeyPermissionDenied from e
-        except UnprocessableEntityError:
-            _logger.warning("用户%s的key不可以被检测权限", user_id)
 
     # 将绑定写入数据库
     config = MeetscheduleConfig(
