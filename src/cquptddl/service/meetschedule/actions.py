@@ -18,6 +18,7 @@ from cquptddl.exc import (
     MeetscheduleBindingExisted,
     MeetscheduleKeyPermissionDenied,
     MeetscheduleNotBound,
+    RaceLimitExceed,
 )
 from cquptddl.model.db import Homework
 from cquptddl.model.db.meetschedule_config import MeetscheduleConfig
@@ -100,7 +101,14 @@ async def unbind(session: AsyncSession, user_id: str):
     sql = select(MeetscheduleEntry).where(MeetscheduleEntry.user_id == user_id)
     resp = await session.execute(sql)
     entries = resp.scalars().all()
-    await delete_homeworks_now(session, config, entries)
+    try:
+        await delete_homeworks_now(session, config, entries)
+    except RaceLimitExceed:
+        raise
+    except Exception as e:
+        _logger.warning(
+            "解绑用户%s，api_key %s时发生异常", user_id, config.api_key, exc_info=e
+        )
 
     # 删除meetschedule_tracked_event条目
     sql = delete(MeetscheduleConfig).where(MeetscheduleConfig.user_id == user_id)  # ty: ignore[invalid-argument-type]
