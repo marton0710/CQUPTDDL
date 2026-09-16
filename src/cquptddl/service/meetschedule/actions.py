@@ -58,6 +58,8 @@ async def bind(session: AsyncSession, user_id: str, key: str):
                     raise MeetscheduleKeyPermissionDenied
         except CquptddlException:
             raise
+        except meetschedule_sdk.UnauthorizedError as e:
+            raise InvalidMeetScheduleKey from e
         except Exception as e:
             errno = uuid.uuid4()
             _logger.error("检查key权限时发生异常，错误码：%s", errno, exc_info=e)
