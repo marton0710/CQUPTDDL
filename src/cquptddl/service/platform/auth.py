@@ -5,7 +5,11 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
-from cquptddl.exc import BindPlatformFailed, InvalidPlatformCredentialFormat
+from cquptddl.exc import (
+    BindPlatformFailed,
+    CquptddlException,
+    InvalidPlatformCredentialFormat,
+)
 from cquptddl.model.db import PlatformInfo, User
 from cquptddl.model.event import PlatformBoundEvent, PlatformUnboundEvent
 from cquptddl.model.schema.platform import AllAuthInputs, AuthMethod, PlatformEnum
@@ -33,9 +37,18 @@ async def bind(
     async with core.factory.get_client() as client:
         try:
             cookies = await platform.login(client, user, credentials)
+        except CquptddlException:
+            _logger.warning("用户%s绑定平台%s时发生异常", user.id, platform_name)
+            raise
         except Exception as e:
             errno = uuid4()
-            _logger.error("绑定平台时发生异常，错误码：%s", errno, exc_info=e)
+            _logger.error(
+                "用户%s绑定平台%s时发生异常，错误码：%s",
+                user.id,
+                platform_name,
+                errno,
+                exc_info=e,
+            )
             raise BindPlatformFailed(f"绑定平台失败，错误码：{errno}") from e
 
     credentials_to_save = core.symbol.call(

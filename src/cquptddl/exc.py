@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from fastapi import HTTPException
 
 
@@ -42,7 +40,7 @@ class ExpiredToken(InvalidToken):
 
 class UserReloginRequired(CquptddlException):
     status = 510
-    detail = "需要手动重新登录"
+    detail = "您的统一认证登录已过期，需要退出聚合截止线后重新登录"
 
 
 class NoSuchHomework(CquptddlException):
@@ -103,10 +101,3 @@ class MeetscheduleKeyPermissionDenied(CquptddlException):
 class RaceLimitExceed(CquptddlException):
     status = 429
     detail = "服务器忙，请稍后重试"
-
-
-class _MeetscheduleBatchActionFailed(CquptddlException):
-    def __init__(self, failed_homework_ids: set[UUID], pending_homework_ids: set[UUID]):
-        self.failed_homework_ids = failed_homework_ids
-        self.pending_homework_ids = pending_homework_ids
-        return super().__init__("批量操作时部分作业失败", 500)  # noqa: PLE0101
