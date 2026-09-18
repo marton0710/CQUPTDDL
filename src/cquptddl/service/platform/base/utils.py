@@ -10,7 +10,7 @@ _logger = getLogger(__name__)
 _logger.setLevel(INFO)
 
 
-async def login_from_platform_account(user: User, service: str) -> str:
+async def login_with_ddl_account(user: User, service: str) -> str:
     """使用当前账号登录
     自动获取当前账号的身份
 
@@ -29,7 +29,6 @@ async def login_from_platform_account(user: User, service: str) -> str:
             await core.call("auth.relogin", user)
             _logger.debug("重新登录成功，正在重试")
             continue
-            # raise LoginFailed("cookie登录失败，正在尝试密码登录") from e
         except fuckids.errors.LoginFailed as e:
             raise LoginFailed(str(e)) from e
         return redirect_url

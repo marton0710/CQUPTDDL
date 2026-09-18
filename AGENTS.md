@@ -52,15 +52,18 @@ router/api/ FastAPI 路由：auth / homework / platform / qqpush / meetscheule(�
 middleware/ need_login(token Cookie) / verify_api_key(X-API-Key)
 service/    auth, crypto, homework, platform, qqpush, meetschedule
 exc.py      所有业务异常（继承 HTTPException，带 status/detail）
+scripts/    运维脚本，不进应用（migrate_db.py / check_ids.py，见 §9）
 ```
 注意：`model/db/__init__.py` 的 `__all__` 里 `LastRefreshTime`、`PlatformCookies` **已不存在**，是历史残留。
 
 ## 4. 关键数据模型
 
 - **User**：主键 `id` = 真实统一认证码；`password` 为 AES 密文（扫码登录为 `None`）；`token_version: UUID` 用于退出登录时批量失效 token。
-- **Homework**：主键 `id = uuid5(NAMESPACE, user_id + platform + <平台自定义串>)`。⚠️ `generate_id` 第二/三参含义**因平台而异**：学在重邮传 `course_name, title`，学习通传 `course_name, title`，雨课堂分别传 `str(item["id"])` 或 `course_name, title`。**改这个函数等于改所有作业主键，会导致作业重复入库**，除非同时写数据迁移。
+- **Homework**：主键 `id = uuid5(NAMESPACE, user_id + platform + platform_custom)`，即 `Homework.generate_id(user_id, platform, platform_custom)`。`platform_custom` 由各平台给出，且必须在**「用户 × 平台」范围内全局唯一**（不能只在课程内唯一）：学习通 `hmw_info["key"]`（实测 = `f"{taskrefId}-{classId}"`）、学在重邮 `item["id"]`、雨课堂 `str(item["id"])`。
+  ⚠️ **改这个函数等于改所有作业主键**：旧主键的行不会消失也不会被覆盖，而 `refresh_homework` 只增不删 → 新代码一上线就是整体重复一次。主键换规则必须配一次性迁移，见 §9。
 - **PlatformInfo**：主键 `(user_id, platform)`；`credentials` 是 AES 密文 JSON；`last_refreshed_homework` 兼作**冷却计时**（`_check_platform_cooldown` 直接改它）。
-- **MeetscheduleEntry**：主键 = `homework.id`（外键到 homework）；`status` 走 `pending → pending-update / pending-delete → success` 状态机。
+- **MeetscheduleEntry**：主键 = `homework.id`，但**只是弱外键**（`model/db/meetschedule_tracked_event.py` 已不声明 `foreign_key`；历史库上的物理外键是 `1758fa4` 之前留下的，已在生产手工删掉）。`status` 走 `pending → pending-update / pending-delete → success` 状态机。
+  ⚠️ 主键跟随 homework，所以任何改作业主键的操作**必须同步改这张表**：`entry.id` 指向一个不存在的作业时，PUSH/UPDATE 阶段会判 `PERMANENT` 并把 entry 删掉，而删远端 Meet 事件只走 DELETE 阶段 → 不处理就会在用户日历里留下**永远删不掉的孤儿事件**。
 - **PlatformEnum** 的枚举**值就是中文名**（`"学在重邮"`/`"学习通"`/`"雨课堂"`），API 路径参数也用它。
 
 ## 5. 各业务要点
@@ -125,11 +128,13 @@ ruff check .      # lint
 ruff format --check .   # 格式（如需修复用 ruff format .）
 ```
 
-- 已验证的**基线**：`HEAD` 上（不含工作区改动）`ty check` 与 `ruff check .` 均 **All checks passed**；`ruff format --check .` 当前输出 74 files already formatted（`HEAD` 的 72 个 `.py` + 未跟踪的 `AGENTS.md` 等）。**格式全部合规，不要跑 `ruff format .` 大范围改写**。
+- 已验证的**基线**：`ty check`、`ruff check .` 均 **All checks passed**，`ruff format --check .` 输出 **75 files already formatted**。**格式全部合规，不要跑 `ruff format .` 大范围改写**（要修就只 `ruff format <单个文件>`）。
 - 工具版本（2025-09 时点）：`ty 0.0.81`、`ruff 0.16.8`。`ruff` 默认规则集下 `T100`（`breakpoint`）会报错，F401 等也会。
 - `ty check` 必须在**仓库根**跑：放别处会因找不到 `pyproject.toml`/`.venv` 而无法解析依赖，产生大量假报错。
 - 未配置 ruff/ty 的 `[tool.*]` 段，也没有 `ruff.toml`/`ty.toml`；`.ruff_cache` 已被 gitignore。
 - 行内抑制用 `# ty: ignore[规则名]`（不需要 `# type: ignore`）；ruff 用 `# noqa: 规则名`。
+- **SQLModel/SQLAlchemy 表达式会让 `ty` 误报**：`select(<Model>).where(<列> == <值>)` 常被判成 `invalid-argument-type`（`<列> == <值>` 静态上返回 `bool`）。仓库既有代码就是直接挂 `# ty: ignore[invalid-argument-type]`，照做即可；`select(Model.id)` / `select(func.count())` 这类单列表述式通常不需要。
+- 文件系统只读的会话里 `ruff` 会因写不了 `.ruff_cache` 而失败，此时加 `--no-cache`。
 
 ## 8. 代码约定与坑（照做能省很多 token）
 
@@ -139,8 +144,24 @@ ruff format --check .   # 格式（如需修复用 ruff format .）
 - `session.get_one()` 会抛 `NoResultFound`；"可能不存在"用 `session.get()` 并判 `None`。
 - 路由函数名大量重复用 `_`（依赖 FastAPI 只看装饰器）；路由前缀在 `router/api/__init__.py`，全部挂 `/api` 下。
 - 类型检查器是 `ty`，不是 mypy（见 §7 的检查命令）。
-- ⚠️ **工作区有未提交的进行中重构，当前 `ty`/`ruff` 均不通过 —— 这 7 个报错全部来自工作区，HEAD 是干净的**：
-  - `service/platform/chaoxing/__init__.py:75` 有 `breakpoint()`（会卡死学习通的后台自动刷新任务）和 `_logger.debug(data)` → ruff `T100`；
-  - chaoxing / xzcy / yuketang 三个模块的 `setLevel` 被改成了 `DEBUG`，导致 `INFO` 变成未使用导入 → ruff 3×`F401`；
-  - `Homework.generate_id` 签名正从 `(user_id, platform, course_name, title)` 收敛为 `(user_id, platform, platform_custom)`，但三个平台**仍按 4 个参数调用** → ty 3×`too-many-positional-arguments`（chaoxing:95、xzcy:60、yuketang:129）；`base/utils.py` 的 `login_from_platform_account` 已同步改名为 `login_with_ddl_account`。
-  接手时的正确顺序：先删 `breakpoint()`、把三个平台改回 `INFO`，再决定 `generate_id` 到底要几参（**注意它是作业主键的来源，见 §4**）并统一调用方，最后让 `ty check` + `ruff check .` 归零。
+- **不要在生产路径上留 `breakpoint()`**：`ruff` 报 `T100`，而且它会直接卡死对应的后台刷新任务。
+- **不要 `_logger.debug(<整个响应体>)`**：平台响应动辄几十 KB（学习通一条通知就是），排障完立刻删；要留痕就记条数或长度。
+
+## 9. 一次性迁移：`scripts/migrate_db.py`
+
+作业主键换规则时用它（背景见 §4）。它是**独立脚本**，不进应用生命周期：不调 `core.init()`/`service.init()`（那会建表 + 起 APScheduler），也不调 `homework.refresh_homework`（那会 commit 并 emit `HomeworkRefreshedEvent`，引发 QQ 全量推送、还会给新主键建 entry，和迁移打架）；只直接用 `platform.fetch_homework(..., check_cooldown=False)`。
+
+做法：对每个 (user, platform) 拉一次作业，按新旧两套规则各算一次主键，命中旧主键的行**原地改名**（`UPDATE ... SET id=...`，先子表 `meetscheduleentry` 再父表 `homework`）；本次没拉到的作业**直接删掉**（先把对应 entry 置 `pending-delete`，交给新代码的 DELETE 阶段去删远端事件，**绝不在脚本里碰 Meet API**）。每个 (user, platform) 一个事务，接口异常整段跳过、不碰数据库。
+
+- 配对以主键法为主；作业被老师改过名时用 `url` 归一化后兜底（学习通取 `taskrefId`+`classId`，学在重邮取 `course_id`+`hmw_id`，雨课堂取 URL 末两段）。**必须归一化**——学习通 url 带会轮换的 `enc=` 签名。
+- 旧规则碰撞（同课程同名作业，生产里真实存在）会让两条作业算出同一个旧主键：先到者改名，败者不动，交给上线后的一次 refresh 正常插入并建 entry。
+- 输出：stdout 是 JSONL（每目标一行 + 最后一行 `__summary__`，含完整 `{旧:新}` 字典），日志走 stderr；**必须在宿主机侧 `| tee` 接收**（`docker/podman exec` 的输出不进 `logs`，容器一 kill 可写层也没了）。
+- 跑法：容器内先 `python /migrate_db.py --dry-run` 审一遍，再 `--yes` 正式跑。**只能在容器内跑**：宿主机 `.env` 指向 sqlite，且 `SECRET_KEY` 不同会导致平台凭据解不开。
+- 冻结旧代码用 `podman exec <ctr> kill -STOP 1`；**不要用 `podman pause`**（cgroup freezer 会把 `exec` 也冻住）。迁移完 `kill` 容器，再上新镜像。
+
+### `scripts/check_ids.py`（只读诊断）
+
+迁移前后来回确认用。不给任何参数：先打印库中作业主键分布（**旧规则几条 / 新规则几条**），再自动挑一个能拉到的 (user, platform) 比对 `item.id` 与旧规则 id。全程只读，结束回滚（连 relogin 刷新的 cookie 都不落库）。
+
+- 迁移**完成**的标志：`旧规则 0`。
+- 迁移**根本没生效**的标志：`旧规则 = 总行数`，且逐条比对出现 `相同=True` —— 说明代码算出来的 `platform_custom` 退化成了 `course_name + title`，此时 `migrate_db.py` 的「改名」会**恒为 0**（每条作业都被判成"新主键已在库"），而它仍会照常删掉"没拉到的作业"。**这种情况绝对不能上新代码**：refresh 会把全部旧主键行按新主键重插一遍，造成整体重复。

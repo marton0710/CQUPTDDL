@@ -14,7 +14,7 @@ class Homework(SQLModel, table=True):
     """
 
     id: uuid.UUID = Field(
-        description="作业id = uuid5(user_id + platform + course_name + title)",
+        description="作业id = uuid5(user_id + platform + platform_custom)",
         primary_key=True,
     )
     user_id: str = Field(
@@ -28,12 +28,10 @@ class Homework(SQLModel, table=True):
     done: bool = Field(False, description="是否已完成")
 
     @staticmethod
-    def generate_id(
-        user_id: str, platform: str, course_name: str, title: str
-    ) -> uuid.UUID:
+    def generate_id(user_id: str, platform: str, platform_custom: str) -> uuid.UUID:
         return uuid.uuid5(
             UUID_NAMESPACE_HOMEWORK_ID,
-            user_id + platform + course_name + title,
+            user_id + platform + platform_custom,
         )
 
     def __eq__(self, b):

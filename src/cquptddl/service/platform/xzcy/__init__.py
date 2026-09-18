@@ -10,7 +10,7 @@ from cquptddl.model.db.homework import Homework
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.platform import AuthMethod, IDSLoginInput, PlatformEnum
 from cquptddl.service.platform.base import Platform as BasePlatform
-from cquptddl.service.platform.base.utils import login_from_platform_account
+from cquptddl.service.platform.base.utils import login_with_ddl_account
 
 from .urls import (
     HOMEWORK_DETAIL_URL,
@@ -35,7 +35,7 @@ class Xzcy(BasePlatform):
         resp = await client.get(LOGIN_ENTRYPOINT_URL, follow_redirects=True)
         service = parse_qs(resp.url.query.decode())["service"][0]
 
-        redirect_url = await login_from_platform_account(user, service)
+        redirect_url = await login_with_ddl_account(user, service)
         resp = await client.get(redirect_url, follow_redirects=True)
         if resp.url.path != "/user/index":
             raise LoginFailed("学在重邮登录失败")
@@ -55,9 +55,7 @@ class Xzcy(BasePlatform):
         payload: dict = resp.json()["todo_list"]
         return [
             Homework(
-                id=Homework.generate_id(
-                    user.id, cls.name, item["course_name"], item["title"]
-                ),
+                id=Homework.generate_id(user.id, cls.name, str(item["id"])),
                 user_id=user.id,
                 course_name=item["course_name"],
                 title=item["title"],

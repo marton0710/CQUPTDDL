@@ -12,7 +12,7 @@ class MeetscheduleEntryStatus(StrEnum):
 
 
 class MeetscheduleEntry(SQLModel, table=True):
-    id: UUID = Field(primary_key=True)
+    id: UUID = Field(primary_key=True)  # 其实是homework.id的弱外键
     meet_event_id: str | None = Field(
         unique=True, index=True, description="meet课程表事件id"
     )

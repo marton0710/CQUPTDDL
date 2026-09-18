@@ -9,7 +9,7 @@ from cquptddl.model.db.homework import Homework
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.platform import AuthMethod, IDSLoginInput, PlatformEnum
 from cquptddl.service.platform.base import Platform as BasePlatform
-from cquptddl.service.platform.base.utils import login_from_platform_account
+from cquptddl.service.platform.base.utils import login_with_ddl_account
 
 from .urls import (
     GET_COURSE_HOMEWORK_URL,
@@ -31,7 +31,7 @@ class Yuketang(BasePlatform):
     async def login(
         cls, client: AsyncClient, user: User, credentials: IDSLoginInput
     ) -> dict[str, str]:  # ty:ignore[invalid-method-override]
-        redirect_url = await login_from_platform_account(user, IDSLOGIN_SERVICE_URL)
+        redirect_url = await login_with_ddl_account(user, IDSLOGIN_SERVICE_URL)
         await client.get(redirect_url, follow_redirects=True)
 
         # 下面3句是为了让 cqupt.yuketang.com 和 changjiang.yuketang.com 共享 cookie
@@ -107,9 +107,7 @@ class Yuketang(BasePlatform):
                 ddl_timestamp = item["deadline"] // 1000
                 homeworks.append(
                     Homework(
-                        id=Homework.generate_id(
-                            user.id, cls.name, course_name, item["title"]
-                        ),
+                        id=Homework.generate_id(user.id, cls.name, str(item["id"])),
                         user_id=user.id,
                         course_name=course_name,
                         title=item["title"],
@@ -126,9 +124,7 @@ class Yuketang(BasePlatform):
                 ddl_timestamp = item["content"]["score_d"] // 1000
                 homeworks.append(
                     Homework(
-                        id=Homework.generate_id(
-                            user.id, cls.name, course_name, item["title"]
-                        ),
+                        id=Homework.generate_id(user.id, cls.name, str(item["id"])),
                         user_id=user.id,
                         course_name=course_name,
                         title=item["title"],

@@ -89,9 +89,7 @@ class Chaoxing(BasePlatform):
                 continue
             homeworks.append(
                 Homework(
-                    id=Homework.generate_id(
-                        user.id, cls.name, hmw_info["courseName"], hmw_info["title"]
-                    ),
+                    id=Homework.generate_id(user.id, cls.name, hmw_info["key"]),
                     user_id=user.id,
                     title=hmw_info["title"],
                     deadline=datetime.fromtimestamp(
