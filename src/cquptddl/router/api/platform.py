@@ -32,7 +32,7 @@ async def _(
     session: Annotated[AsyncSession, Depends(core.depends_session)],
     platform_name: PlatformEnum,
 ):
-    return await core.call("platform.unbind", session, user, platform_name)
+    return await core.call("platform.unbind", session, user.id, platform_name)
 
 
 @router.get("/{platform_name}/valid_cookie")

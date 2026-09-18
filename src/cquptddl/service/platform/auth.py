@@ -66,11 +66,11 @@ async def bind(
     core.bus.emit(PlatformBoundEvent(uid=user.id, platform_name=platform_name))
 
 
-async def unbind(session: AsyncSession, user: User, platform_name: PlatformEnum):
-    platform_info = await session.get(PlatformInfo, (user.id, platform_name))
+async def unbind(session: AsyncSession, uid: str, platform_name: PlatformEnum):
+    platform_info = await session.get(PlatformInfo, (uid, platform_name))
     if platform_info is not None:
         await session.delete(platform_info)
-    core.bus.emit(PlatformUnboundEvent(uid=user.id, platform_name=platform_name))
+    core.bus.emit(PlatformUnboundEvent(uid=uid, platform_name=platform_name))
 
 
 async def relogin(
