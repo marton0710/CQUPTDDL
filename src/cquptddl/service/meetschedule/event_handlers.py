@@ -1,6 +1,10 @@
 from logging import INFO, getLogger
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from cquptddl import core
+from cquptddl.exc import MeetscheduleNotBound
+from cquptddl.model.db import User
 from cquptddl.model.db.meetschedule_config import MeetscheduleConfig
 from cquptddl.model.event import (
     HomeworkDoneEvent,
@@ -8,6 +12,7 @@ from cquptddl.model.event import (
 )
 from cquptddl.service.meetschedule.actions import (
     add_new_homeworks_by_homework_ids,
+    unbind,
     update_homeworks_by_homewok_ids,
 )
 
@@ -34,6 +39,13 @@ async def _on_recv_new_homework(event: HomeworkRefreshedEvent):
 async def _on_recv_homework_done_event(event: HomeworkDoneEvent):
     async with core.factory.get_session() as session:
         await update_homeworks_by_homewok_ids(session, (event.homework_id,))
+
+
+async def on_delete_user(session: AsyncSession, user: User):
+    try:
+        await unbind(session, user.id)
+    except MeetscheduleNotBound:
+        pass
 
 
 core.bus.on(HomeworkRefreshedEvent, _on_recv_new_homework)

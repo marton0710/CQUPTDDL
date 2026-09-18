@@ -12,7 +12,7 @@ class MeetscheduleEntryStatus(StrEnum):
 
 
 class MeetscheduleEntry(SQLModel, table=True):
-    id: UUID = Field(primary_key=True, foreign_key="homework.id")
+    id: UUID = Field(primary_key=True)
     meet_event_id: str | None = Field(
         unique=True, index=True, description="meet课程表事件id"
     )

@@ -7,6 +7,7 @@ from sqlmodel import select
 from cquptddl import core
 from cquptddl.model.db import PlatformInfo, User
 from cquptddl.model.event import (
+    AccountDeletedEvent,
     AutoRefreshHomeworkFailedEvent,
     PlatformBoundEvent,
     PlatformUnboundEvent,
@@ -73,5 +74,14 @@ async def _job(uid: str, platform_name: PlatformEnum):
         )
 
 
+async def _on_delete_user(event: AccountDeletedEvent):
+    for platform in PlatformEnum:
+        try:
+            scheduler.remove_job(_generate_job_id(event.uid, platform))
+        except JobLookupError:
+            pass
+
+
 core.bus.on(PlatformBoundEvent, lambda e: add_job(e.uid, e.platform_name))
 core.bus.on(PlatformUnboundEvent, lambda e: del_job(e.uid, e.platform_name))
+core.bus.on(AccountDeletedEvent, _on_delete_user)
