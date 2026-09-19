@@ -49,7 +49,7 @@ async def bind(session: AsyncSession, user_id: str, key: str):
     if await session.get(MeetscheduleConfig, user_id):
         raise MeetscheduleBindingExisted
 
-    async with AsyncMeetSchedule(key) as meet, limiter.acquire(meet):
+    async with AsyncMeetSchedule(key) as meet:
         # 检查key的权限
         try:
             async with limiter.acquire(meet, block=False):
@@ -62,18 +62,31 @@ async def bind(session: AsyncSession, user_id: str, key: str):
             raise InvalidMeetScheduleKey from e
         except Exception as e:
             errno = uuid.uuid4()
-            _logger.error("检查key权限时发生异常，错误码：%s", errno, exc_info=e)
+            _logger.error(
+                "用户%s检查key权限时发生异常，错误码：%s", user_id, errno, exc_info=e
+            )
             raise CquptddlException(
                 f"检查key权限时发生异常，错误码：{errno}，请联系管理员"
             ) from e
 
         # 查询现在的schedule_id
         try:
-            now_schedule = await meet.schedules.get_current()
+            async with limiter.acquire(meet, block=False):
+                now_schedule = await meet.schedules.get_current()
         except meetschedule_sdk.exceptions.UnauthorizedError as e:
             raise InvalidMeetScheduleKey from e
         except meetschedule_sdk.ForbiddenError as e:
             raise MeetscheduleKeyPermissionDenied from e
+        except meetschedule_sdk.NotFoundError as e:
+            raise InvalidMeetScheduleKey("请先在Meet课程表中至少创建一个课程表") from e
+        except Exception as e:
+            errno = uuid.uuid4()
+            _logger.error(
+                "用户%s获取当前课程表时发生异常，错误码：%s", user_id, errno, exc_info=e
+            )
+            raise CquptddlException(
+                f"获取当前课程表时发生异常，错误码：{errno}。请联系管理员"
+            ) from e
 
     # 将绑定写入数据库
     config = MeetscheduleConfig(
