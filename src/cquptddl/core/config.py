@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +21,7 @@ class Settings(BaseSettings):
     homework_cache_base_ttl: int = 12 * 60 * 60  # 缓存基础时间
     homework_cache_jitter: int = 30 * 60  # 缓存偏移时间（仅向后偏移）
     homework_cooldown_ttl: int = 30 * 60  # 请求冷却时间
+    homework_refresh_attempts: int = Field(3, ge=1)  # 刷新作业总共尝试次数
 
     # JWT相关
     SECRET_KEY: str
