@@ -5,6 +5,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlmodel import select
 
 from cquptddl import core
+from cquptddl.exc import CquptddlException
 from cquptddl.model.db import PlatformInfo, User
 from cquptddl.model.event import (
     AccountDeletedEvent,
@@ -65,6 +66,8 @@ async def _job(uid: str, platform_name: PlatformEnum):
             user = await session.get_one(User, uid)
             await refresh_homework(session, user, platform_name)
             _logger.info("用户%s在平台%s的作业自动刷新成功", uid, platform_name)
+    except CquptddlException:
+        raise
     except Exception as e:
         _logger.error(
             "用户%s自动刷新平台%s时发生异常：", uid, platform_name, exc_info=e
