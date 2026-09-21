@@ -26,6 +26,7 @@ dependencies = [
     "abxbus>=2.5.45",
     "apscheduler>=3.11.3",
     "throttled-py>=3.4.1",
+    "icalendar>=7.3.0",
 ]
 
 [[tool.uv.index]]
@@ -44,4 +45,8 @@ requires = ["uv_build<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = ["aiosqlite>=0.22.1", "respx>=0.23.1"]
+dev = [
+    "aiosqlite>=0.22.1",
+    "pytest>=9.1.1",
+    "respx>=0.23.1",
+]

@@ -9,7 +9,7 @@
 - Python **>=3.14**（用到 `uuid7`、`itertools.batched`），包管理 **uv**。
 - 入口：`cquptddl:main` → `uvicorn cquptddl:app`（见 `src/cquptddl/__init__.py`）。
 - 运行：`uv run cquptddl`；依赖装到 `.venv/`（含 `uvicorn`、`dotenv` 等可执行文件）。
-- **无项目级 lint/类型检查配置**（`pyproject.toml` 里没有 ruff/ty 段，也没有 `ruff.toml`/`ty.toml`），但开发者**全局安装了 `ty` 与 `ruff`**，改动后必须用它们检查（见 §7）。`tests/` **是空目录**，无任何测试；dev 依赖只有 `aiosqlite`、`respx`（`uv.lock` 里没有 pytest），目前也未被任何代码使用。
+- **无项目级 lint/类型检查配置**（`pyproject.toml` 里没有 ruff/ty 段，也没有 `ruff.toml`/`ty.toml`），但开发者**全局安装了 `ty` 与 `ruff`**，改动后必须用它们检查（见 §7）。`tests/` 有 `test_ics_feed.py`（ICS 渲染的纯函数单测）和 `test_ics_subscription.py`（用 `aiosqlite` 内存库跑订阅的增删改查与拉取统计），都用 pytest；dev 依赖 `aiosqlite`、`respx`、`pytest`，其中 `respx` 目前未被任何代码使用。
 - `README.md` 是空文件。分支：当前 `v2`（开发分支），`master` 落后于 `v2`；远端 `git@github.com:marton0710/CQUPTDDL.git`。
 - 部署：`Dockerfile` 用 python:3.14-alpine，从自建源 `pypi.bail.asia` 装包，前端目录挂到 `/fe`（`FRONTEND_DIR`），暴露 8000。
 
@@ -30,6 +30,7 @@
 - `homework.refresh_homework` / `complete` / `get_cached_homework` / `get_cached_homework_count` / `get_last_refresh_time` / `get_user_dying_homeworks` / `get_user_homeworks_with_deadline`
 - `qqpush.configure` / `get_user_config_from_qqchan_id` / `push_dying_homeworks`
 - `meetschedule.bind` / `unbind`
+- `ics.list_subscriptions` / `create_subscription` / `delete_subscription` / `render_feed`
 ⚠️ 名字重复 `export` 会抛 `NameError`；改函数名要同步改 `call()` 里的字符串（无类型检查兜底）。
 
 ### 2.3 事件总线 `core.bus`（abxbus）
@@ -45,12 +46,12 @@
 
 ```
 core/       config(pydantic-settings 读 .env) / db(engine+建表) / factory / event_bus / task / symbol
-model/db/   SQLModel 表：User, Homework, PlatformInfo, QQPushConfig, MeetscheduleConfig, MeetscheduleEntry
+model/db/   SQLModel 表：User, Homework, PlatformInfo, QQPushConfig, MeetscheduleConfig, MeetscheduleEntry, IcsSubscription
 model/schema/  pydantic API 模型与枚举（PlatformEnum、AuthMethod）
 model/event/   事件定义
-router/api/ FastAPI 路由：auth / homework / platform / qqpush / meetscheule(拼写如此)
+router/api/ FastAPI 路由：auth / homework / ics / platform / qqpush / meetscheule(拼写如此)
 middleware/ need_login(token Cookie) / verify_api_key(X-API-Key)
-service/    auth, crypto, homework, platform, qqpush, meetschedule
+service/    auth, crypto, homework, ics, platform, qqpush, meetschedule
 exc.py      所有业务异常（继承 HTTPException，带 status/detail）
 ```
 注意：`model/db/__init__.py` 的 `__all__` 里 `LastRefreshTime`、`PlatformCookies` **已不存在**，是历史残留。
@@ -64,6 +65,7 @@ exc.py      所有业务异常（继承 HTTPException，带 status/detail）
 - **MeetscheduleEntry**：主键 = `homework.id`，但**只是弱外键**（`model/db/meetschedule_tracked_event.py` 已不声明 `foreign_key`；历史库上的物理外键是 `1758fa4` 之前留下的，已在生产手工删掉）。`status` 走 `pending → pending-update / pending-delete → success` 状态机。
   ⚠️ 主键跟随 homework，所以任何改作业主键的操作**必须同步改这张表**：`entry.id` 指向一个不存在的作业时，PUSH/UPDATE 阶段会判 `PERMANENT` 并把 entry 删掉，而删远端 Meet 事件只走 DELETE 阶段 → 不处理就会在用户日历里留下**永远删不掉的孤儿事件**。
 - **PlatformEnum** 的枚举**值就是中文名**（`"学在重邮"`/`"学习通"`/`"雨课堂"`），API 路径参数也用它。
+- **IcsSubscription**：主键 `id`（uuid7）；`user_id` 建索引 + 外键 CASCADE，**一个用户可以有多条订阅**；`token_hash` 存 token 的 sha256（唯一索引），**明文只在创建时返回一次**；`created_at` 兼作 feed 里所有事件的 `DTSTAMP`；`fetch_count` / `last_fetched_at` 记录拉取统计（见 §5 ics）。
 
 ## 5. 各业务要点
 
@@ -106,6 +108,20 @@ exc.py      所有业务异常（继承 HTTPException，带 status/detail）
 - 绑定要校验 key 权限 `SCHEDULE_READ + ENTITIES_READ + ENTITIES_WRITE`（不足 → 403）。
 - 快照分区必须在改任何状态之前完成；`_job` 中途不 commit。
 
+### ics（ICS 日历订阅）
+- 库用 `icalendar`（依赖里带 `tzdata`，alpine 没有系统时区库也能用 `ZoneInfo("Asia/Shanghai")`）。
+- **请求时即时渲染**：没有后台任务、没有缓存、**没有 bus 事件处理器**。`ETag = sha256(渲染结果)`，只认 `If-None-Match`（不发 `Last-Modified`，没有可靠的"内容变更时间"）→ 新作业、完成、解绑删作业、`ics_past_days` 自然过期这些变化天然生效，不用去接事件。
+- 所以渲染**必须是纯函数**：`DTSTAMP` 取 `IcsSubscription.created_at`（常量）、`VTIMEZONE` 用固定日期范围生成、查询 `order_by(deadline, id)`。任何一处用 `now()` 都会让 ETag 抖动、304 失效。
+- 事件刻意**不输出 `SEQUENCE`/`LAST-MODIFIED`**：当前刷新只增不改既有作业，每个 UID 的内容不可变。将来若开始更新已有作业字段，必须补这两个属性（要给 `Homework` 加 `updated_at` + 手写迁移），否则客户端不会刷新旧事件。
+- 只订阅 `done == False` 且有 `deadline` 的作业，并保留最近 `ics_past_days` 天内已截止的；作业完成后从 feed 消失，日历客户端会自行删除该事件。
+- 鉴权靠 URL 里的 token（日历客户端发不了 cookie），`/api/ics/feed/{token}.ics` 不校验登录，token 无效一律 404（不区分"不存在"与"已撤销"）。
+- **多个订阅**：`GET /api/ics/subscription` 返回当前用户全部订阅的数组（`id`/`created_at`/`fetch_count`/`last_fetched_at`，**不含token**），`POST` 每次新建一条（不去重，响应多一个 `token` 字段，是明文token**唯一一次**出现的机会），`DELETE /api/ics/subscription/{id}` 删指定一条（非本人或不存在 → 404）。前端用 `id` 区分订阅，用创建时拿到的 token 拼 `/api/ics/feed/{token}.ics`；**后端不返回完整 url**（所以没有 `public_base_url` 配置）。
+- token 按密码对待：库里只存 `sha256(token)`（`ics.hash_token`，响应模型 `IcsSubscriptionCreatedSchema` 才带 token）。用**普通 sha256 + 唯一索引**即可，**不要换 bcrypt/argon2**——那是为抗低熵口令设计的，对256位随机token没有意义，只会拖慢每次 feed 请求。token 丢了就删掉重建（刻意不做掩码+尾4位：随机串的尾4位没有信息量）。
+- 拉取统计：feed 每次渲染成功后原子自增 `fetch_count` 并刷新 `last_fetched_at`（304 也算一次拉取）。**统计字段绝不能进渲染结果**，否则 ETag 每次都变、304 失效（`_record_fetch` 用 `UPDATE ... SET fetch_count = fetch_count + 1` 避免并发丢更新）。
+- 订阅表靠 `create_all` 建；删账号靠数据库外键 CASCADE（生产 MariaDB 生效；本地 sqlite 默认不启用外键，会留孤儿行）。
+- ⚠️ 从"一人一条"改成多订阅时主键由 `user_id` 变成 `id`，而 `create_all` 永不 ALTER：**旧库必须人工迁移**（`DROP TABLE icssubscription` 后由 `create_all` 重建），代码里不做自动迁移。表里只有 token 的哈希，重建后让用户重新生成即可。
+- 配置：`ics_timezone`、`ics_event_duration_minutes`、`ics_past_days`。
+
 ## 6. 本地开发与验证
 
 ```bash
@@ -114,7 +130,7 @@ uv run cquptddl         # 启动（DEBUG=true 时 reload + 只监听 127.0.0.1�
 ```
 - 配置全部来自 `.env`（`pydantic-settings`，`extra="ignore"`，字段名大小写不敏感）。**必需**：`DATABASE_URL`、`SECRET_KEY`、`QQBOT_URL`、`QQBOT_RECV_API_KEY`、`QQBOT_SEND_API_KEY`。常用可调项见 `core/config.py`。`.env` 已被 gitignore，仓库里没有 `.env.example`。
 - 本地用 `sqlite+aiosqlite:///./test.db`（仓库根有 `test.db`，首次导入 `config` 时就会实例化 Settings）。
-- **建表方式只有 `SQLModel.metadata.create_all`**（`core/db.py:_migrate_db`）：只建缺失的表，**永不 ALTER**。改字段/类型必须自己写迁移或重建库。
+- **建表方式只有 `SQLModel.metadata.create_all`**（`core/db.py:_migrate_db`）：只建缺失的表，**永不 ALTER**。改字段/类型必须自己写迁移或重建库（人工执行，不要在 `_migrate_db` 里加自动迁移）。
 - 验证手段：`uv run python -c "import cquptddl"` 能捕获大部分 import/符号注册错误；`/docs` 看路由。**注意 `import cquptddl` 会读取 `.env` 并连库**。
 
 ## 7. 提交前必须跑 ty + ruff（全局安装）
@@ -127,7 +143,7 @@ ruff check .      # lint
 ruff format --check .   # 格式（如需修复用 ruff format .）
 ```
 
-- 已验证的**基线**：`ty check`、`ruff check .` 均 **All checks passed**，`ruff format --check .` 输出 **74 files already formatted**。**格式全部合规，不要跑 `ruff format .` 大范围改写**（要修就只 `ruff format <单个文件>`）。
+- 已验证的**基线**：`ty check`、`ruff check .` 均 **All checks passed**，`ruff format --check .` 输出 **82 files already formatted**。**格式全部合规，不要跑 `ruff format .` 大范围改写**（要修就只 `ruff format <单个文件>`）。
 - 工具版本（2025-09 时点）：`ty 0.0.81`、`ruff 0.16.8`。`ruff` 默认规则集下 `T100`（`breakpoint`）会报错，F401 等也会。
 - `ty check` 必须在**仓库根**跑：放别处会因找不到 `pyproject.toml`/`.venv` 而无法解析依赖，产生大量假报错。
 - 未配置 ruff/ty 的 `[tool.*]` 段，也没有 `ruff.toml`/`ty.toml`；`.ruff_cache` 已被 gitignore。

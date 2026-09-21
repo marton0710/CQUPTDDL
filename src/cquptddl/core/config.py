@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # meet课程表相关
     meetschedule_sync_interval: int = 5 * 60
 
+    # ICS订阅相关
+    ics_timezone: str = "Asia/Shanghai"  # 日历使用的时区
+    ics_event_duration_minutes: int = 30  # 事件时长，开始时间 = 截止时间 - 该时长
+    ics_past_days: int = 30  # 保留最近多少天内已截止的作业
+
     FRONTEND_DIR: str | None = None
 
     # 读取.env，忽略额外字段
