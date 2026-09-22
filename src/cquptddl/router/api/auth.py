@@ -123,6 +123,7 @@ async def _(
 ) -> Userinfo:
     qqpush_config = await session.get_one(QQPushConfig, user.id)
     meetschedule_config = await session.get(MeetscheduleConfig, user.id)
+    ics_url_count: int = await core.symbol.call("ics.get_url_count", session, user.id)
 
     qqpush_config_data = qqpush_config.model_dump()
     del qqpush_config_data["user_id"]
@@ -144,6 +145,7 @@ async def _(
         name=user.name,
         qqpush_config=qqpush_config_data,
         meetschedule_config=meetschedule_config_data,
+        ics_url_count=ics_url_count,
     )
 
 

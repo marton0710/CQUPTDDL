@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import func, select
 
 from cquptddl.core import config
 from cquptddl.exc import IcsSubscriptionNotFound
@@ -32,6 +32,16 @@ async def list_subscriptions(
     )
     resp = await session.execute(stmt)
     return list(resp.scalars().all())
+
+
+async def get_url_count(session: AsyncSession, user_id: str) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(IcsSubscription)
+        .where(IcsSubscription.user_id == user_id)
+    )
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
 
 
 async def create_subscription(

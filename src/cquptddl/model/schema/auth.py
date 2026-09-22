@@ -32,3 +32,4 @@ class Userinfo(BaseModel):
     meetschedule_config: MeetscheduleConfigSchema | None = Field(
         description="meet课程表同步配置"
     )
+    ics_url_count: int = Field(description="ICS订阅连接数量")
