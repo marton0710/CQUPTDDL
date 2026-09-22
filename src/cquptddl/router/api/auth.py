@@ -8,8 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cquptddl import core
 from cquptddl.core.config import config
 from cquptddl.middleware.auth import need_login
-from cquptddl.model.db.meetschedule_config import MeetscheduleConfig
-from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.db.user import User
 from cquptddl.model.schema.auth import (
     GetLoginQRCodeOutput,
@@ -18,6 +16,7 @@ from cquptddl.model.schema.auth import (
     QRCodeLoginInput,
     Userinfo,
 )
+from cquptddl.model.schema.qqpush import QQPushConfigSchema
 
 router = APIRouter()
 
@@ -121,30 +120,18 @@ async def _(
     session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
     user: Annotated[User, Depends(need_login)],
 ) -> Userinfo:
-    qqpush_config = await session.get_one(QQPushConfig, user.id)
-    meetschedule_config = await session.get(MeetscheduleConfig, user.id)
+    qqpush_config: QQPushConfigSchema = await core.symbol.call(
+        "qqpush.get_configure", session, user.id
+    )
+    is_bound_meetschedule: bool = await core.symbol.call(
+        "meetschedule.is_bound", session, user.id
+    )
     ics_url_count: int = await core.symbol.call("ics.get_url_count", session, user.id)
-
-    qqpush_config_data = qqpush_config.model_dump()
-    del qqpush_config_data["user_id"]
-
-    if meetschedule_config is None:
-        meetschedule_config_data = None
-    else:
-        meetschedule_config_data = meetschedule_config.model_dump()
-        del meetschedule_config_data["user_id"]
-        del meetschedule_config_data["schedule_id"]
-        meetschedule_config_data["meetschedule_key"] = (
-            None
-            if meetschedule_config_data["api_key"] is None
-            else "******" + meetschedule_config_data["api_key"][-4:]
-        )
-        del meetschedule_config_data["api_key"]
 
     return Userinfo(
         name=user.name,
-        qqpush_config=qqpush_config_data,
-        meetschedule_config=meetschedule_config_data,
+        qqpush_config=qqpush_config,
+        is_bound_meetschedule=is_bound_meetschedule,
         ics_url_count=ics_url_count,
     )
 

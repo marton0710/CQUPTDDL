@@ -19,6 +19,16 @@ async def configure_qqpush(
     core.bus.emit(QQPushConfigChangedEvent(uid=user.id))
 
 
+async def get_configure(session: AsyncSession, user_id: str) -> QQPushConfigSchema:
+    config = await session.get_one(QQPushConfig, user_id)
+    return QQPushConfigSchema(
+        qqchan_id=config.qqchan_id,
+        qq_push_strategy=config.qq_push_strategy,
+        qq_push_at=config.qq_push_at,
+        qq_push_scope=config.qq_push_scope,
+    )
+
+
 async def _generate_qqpush_config_after_register(event: UserRegisterEvent):
     async with core.factory.get_session() as session:
         session.add(QQPushConfig(user_id=event.uid))

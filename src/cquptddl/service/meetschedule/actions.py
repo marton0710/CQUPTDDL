@@ -130,6 +130,10 @@ async def unbind(session: AsyncSession, user_id: str):
     await session.execute(sql)
 
 
+async def is_bound(session: AsyncSession, user_id: str) -> bool:
+    return await session.get(MeetscheduleConfig, user_id) is not None
+
+
 async def add_new_homeworks_by_homework_ids(
     session: AsyncSession, homework_and_user_ids: Iterable[tuple[uuid.UUID, str]]
 ):

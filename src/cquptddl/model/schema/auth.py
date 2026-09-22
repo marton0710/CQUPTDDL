@@ -2,7 +2,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from cquptddl.model.schema.meetschedule import MeetscheduleConfigSchema
 from cquptddl.model.schema.qqpush import QQPushConfigSchema
 
 
@@ -29,7 +28,5 @@ class Userinfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(description="用户姓名")
     qqpush_config: QQPushConfigSchema = Field(description="qq推送配置")
-    meetschedule_config: MeetscheduleConfigSchema | None = Field(
-        description="meet课程表同步配置"
-    )
+    is_bound_meetschedule: bool = Field(description="是否已经绑定Meet课程表")
     ics_url_count: int = Field(description="ICS订阅连接数量")
