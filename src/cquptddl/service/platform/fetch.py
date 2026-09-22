@@ -37,7 +37,7 @@ async def fetch_homework(
     platform = Platform.get_platform_by_name(platform_name)
     for attempt_time in range(core.config.homework_refresh_attempts):
         try:
-            homeworks = await platform.get_homework(platform_info.cookies, user)
+            homeworks = await platform.get_homework(platform_info.cookies, user.id)
         except InvalidPlatformCookie:
             if attempt_time >= core.config.homework_refresh_attempts - 1:
                 raise

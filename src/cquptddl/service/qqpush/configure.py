@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
-from cquptddl.model.db import User
 from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.event import (
     InvalidQQChanIDEvent,
@@ -12,11 +11,11 @@ from cquptddl.model.schema.qqpush import QQPushConfigSchema
 
 
 async def configure_qqpush(
-    session: AsyncSession, user: User, model: QQPushConfigSchema
+    session: AsyncSession, user_id: str, model: QQPushConfigSchema
 ):
-    await session.merge(QQPushConfig(user_id=user.id, **model.model_dump()))
+    await session.merge(QQPushConfig(user_id=user_id, **model.model_dump()))
     await session.commit()
-    core.bus.emit(QQPushConfigChangedEvent(uid=user.id))
+    core.bus.emit(QQPushConfigChangedEvent(uid=user_id))
 
 
 async def get_configure(session: AsyncSession, user_id: str) -> QQPushConfigSchema:

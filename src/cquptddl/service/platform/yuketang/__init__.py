@@ -42,14 +42,16 @@ class Yuketang(BasePlatform):
         return {"sessionid": sessionid}
 
     @classmethod
-    async def get_homework(cls, cookies: dict[str, str], user: User) -> list[Homework]:
+    async def get_homework(
+        cls, cookies: dict[str, str], user_id: str
+    ) -> list[Homework]:
         async with core.factory.get_client(cookies=cookies) as client:
             try:
                 courses = await cls._get_course(client)
                 homeworks: list[Homework] = []
                 for cn, cid in courses.items():
                     homeworks.extend(
-                        await cls._get_course_homeworks(client, user, cn, cid)
+                        await cls._get_course_homeworks(client, user_id, cn, cid)
                     )
             except HTTPStatusError as e:
                 exc = InvalidPlatformCookie()
@@ -90,7 +92,7 @@ class Yuketang(BasePlatform):
 
     @classmethod
     async def _get_course_homeworks(
-        cls, client: AsyncClient, user: User, course_name: str, classroom_id: int
+        cls, client: AsyncClient, user_id: str, course_name: str, classroom_id: int
     ):
         payload = (
             (
@@ -107,8 +109,8 @@ class Yuketang(BasePlatform):
                 ddl_timestamp = item["deadline"] // 1000
                 homeworks.append(
                     Homework(
-                        id=Homework.generate_id(user.id, cls.name, str(item["id"])),
-                        user_id=user.id,
+                        id=Homework.generate_id(user_id, cls.name, str(item["id"])),
+                        user_id=user_id,
                         course_name=course_name,
                         title=item["title"],
                         deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()
@@ -124,8 +126,8 @@ class Yuketang(BasePlatform):
                 ddl_timestamp = item["content"]["score_d"] // 1000
                 homeworks.append(
                     Homework(
-                        id=Homework.generate_id(user.id, cls.name, str(item["id"])),
-                        user_id=user.id,
+                        id=Homework.generate_id(user_id, cls.name, str(item["id"])),
+                        user_id=user_id,
                         course_name=course_name,
                         title=item["title"],
                         deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()

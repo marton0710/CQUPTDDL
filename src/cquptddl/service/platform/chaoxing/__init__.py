@@ -6,7 +6,6 @@ from httpx import AsyncClient, HTTPStatusError
 
 from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie, LoginFailed
-from cquptddl.model.db import User
 from cquptddl.model.db.homework import Homework
 from cquptddl.model.schema.platform import (
     AuthMethod,
@@ -59,7 +58,9 @@ class Chaoxing(BasePlatform):
         return dict(client.cookies)
 
     @classmethod
-    async def get_homework(cls, cookies: dict[str, str], user: User) -> list[Homework]:
+    async def get_homework(
+        cls, cookies: dict[str, str], user_id: str
+    ) -> list[Homework]:
         async with core.factory.get_client(cookies=cookies) as client:
             try:
                 data = (
@@ -89,8 +90,8 @@ class Chaoxing(BasePlatform):
                 continue
             homeworks.append(
                 Homework(
-                    id=Homework.generate_id(user.id, cls.name, hmw_info["key"]),
-                    user_id=user.id,
+                    id=Homework.generate_id(user_id, cls.name, hmw_info["key"]),
+                    user_id=user_id,
                     title=hmw_info["title"],
                     deadline=datetime.fromtimestamp(
                         int(hmw_info["endTime"]) / 1000

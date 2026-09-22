@@ -20,7 +20,7 @@ async def _(
     user: Annotated[User, Depends(need_login)],
     model: QQPushConfigSchema,
 ):
-    await core.symbol.call("qqpush.configure", session, user, model)
+    await core.symbol.call("qqpush.configure", session, user.id, model)
 
 
 @router.post("/_/dying_homeworks")

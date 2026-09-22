@@ -37,7 +37,7 @@ class Platform(ABC):
     @classmethod
     @abstractmethod
     async def get_homework(
-        cls, cookies: dict[str, str], user: User
+        cls, cookies: dict[str, str], user_id: str
     ) -> Iterable[Homework]:
         """获取作业
         Raises:

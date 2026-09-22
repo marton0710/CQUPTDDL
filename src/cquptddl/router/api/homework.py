@@ -43,15 +43,15 @@ async def _(
         num: 一页的作业数量，-1为所有作业
     """
     homeworks = await core.call(
-        "homework.get_cached_homework", session, user, platform, num, page
+        "homework.get_cached_homework", session, user.id, platform, num, page
     )
     resp = HomeworkResponse(
         homeworks=[HomeworkSchema.model_validate(i.model_dump()) for i in homeworks],
         count=await core.call(
-            "homework.get_cached_homework_count", session, user, platform
+            "homework.get_cached_homework_count", session, user.id, platform
         ),
         last_refresh_time=await core.call(
-            "homework.get_last_refresh_time", session, user, platform
+            "homework.get_last_refresh_time", session, user.id, platform
         ),
     )
     # await refresh(user, platform)
@@ -94,4 +94,4 @@ async def _(
     id: UUID,
     model: HomeworkCompleteInput,
 ):
-    await core.call("homework.complete", session, user, id, model.is_complete)
+    await core.call("homework.complete", session, user.id, id, model.is_complete)

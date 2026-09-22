@@ -43,7 +43,9 @@ class Xzcy(BasePlatform):
         return dict(client.cookies)
 
     @classmethod
-    async def get_homework(cls, cookies: dict[str, str], user: User) -> list[Homework]:
+    async def get_homework(
+        cls, cookies: dict[str, str], user_id: str
+    ) -> list[Homework]:
         async with core.factory.get_client(cookies=cookies) as client:
             resp = await client.get(TODO_URL)
             try:
@@ -55,8 +57,8 @@ class Xzcy(BasePlatform):
         payload: dict = resp.json()["todo_list"]
         return [
             Homework(
-                id=Homework.generate_id(user.id, cls.name, str(item["id"])),
-                user_id=user.id,
+                id=Homework.generate_id(user_id, cls.name, str(item["id"])),
+                user_id=user_id,
                 course_name=item["course_name"],
                 title=item["title"],
                 url=HOMEWORK_DETAIL_URL.format(

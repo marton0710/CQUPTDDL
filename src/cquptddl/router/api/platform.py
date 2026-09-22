@@ -41,4 +41,4 @@ async def _(
     session: Annotated[AsyncSession, Depends(core.depends_session)],
     platform_name: PlatformEnum,
 ) -> bool | None:
-    return await core.call("platform.valid_cookie", session, user, platform_name)
+    return await core.call("platform.valid_cookie", session, user.id, platform_name)

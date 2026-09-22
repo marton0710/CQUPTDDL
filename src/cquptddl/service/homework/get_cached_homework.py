@@ -7,7 +7,7 @@ from sqlmodel import delete, select
 
 from cquptddl import core
 from cquptddl.core import get_session
-from cquptddl.model.db import Homework, User
+from cquptddl.model.db import Homework
 from cquptddl.model.db.platform_info import PlatformInfo
 from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.event import PlatformUnboundEvent
@@ -16,13 +16,13 @@ from cquptddl.model.schema.platform import PlatformEnum
 
 async def get_cached_homework(
     session: AsyncSession,
-    user: User,
+    user_id: str,
     platform_name: PlatformEnum | None = None,
     num: int = -1,
     page: int = 1,
 ) -> Iterable[Homework]:
     stmt = (
-        select(Homework).where(Homework.user_id == user.id).order_by(Homework.deadline)  # ty: ignore[invalid-argument-type]
+        select(Homework).where(Homework.user_id == user_id).order_by(Homework.deadline)  # ty: ignore[invalid-argument-type]
     )
     if platform_name is not None:
         stmt = stmt.where(Homework.platform == platform_name)
@@ -33,9 +33,9 @@ async def get_cached_homework(
 
 
 async def get_cached_homework_count(
-    session: AsyncSession, user: User, platform_name: PlatformEnum | None = None
+    session: AsyncSession, user_id: str, platform_name: PlatformEnum | None = None
 ) -> int:
-    stmt = select(func.count()).where(Homework.user_id == user.id)
+    stmt = select(func.count()).where(Homework.user_id == user_id)
     if platform_name is not None:
         stmt = stmt.where(Homework.platform == platform_name)
     resp = await session.execute(stmt)
@@ -43,10 +43,10 @@ async def get_cached_homework_count(
 
 
 async def get_last_refresh_time(
-    session: AsyncSession, user: User, platform_name: PlatformEnum | None = None
+    session: AsyncSession, user_id: str, platform_name: PlatformEnum | None = None
 ) -> datetime:
     stmt = select(func.max(PlatformInfo.last_refreshed_homework)).where(
-        PlatformInfo.user_id == user.id
+        PlatformInfo.user_id == user_id
     )  # XXX: max还是min还是什么存在争议，因为作业不一定是同时刷新
     if platform_name is not None:
         stmt = stmt.where(PlatformInfo.platform == platform_name)

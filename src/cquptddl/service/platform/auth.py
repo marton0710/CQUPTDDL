@@ -92,9 +92,9 @@ async def relogin(
 
 
 async def valid_cookie(
-    session: AsyncSession, user: User, platform_name: PlatformEnum
+    session: AsyncSession, user_id: str, platform_name: PlatformEnum
 ) -> bool | None:
-    platform_info = await session.get(PlatformInfo, (user.id, platform_name))
+    platform_info = await session.get(PlatformInfo, (user_id, platform_name))
     if platform_info is None:
         return None
     platform = Platform.get_platform_by_name(platform_name)
