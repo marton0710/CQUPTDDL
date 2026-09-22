@@ -78,6 +78,11 @@ class WrongQQPushAPIKey(CquptddlException):
     detail = "你不能调用此接口"
 
 
+class QQChanIDNotExist(CquptddlException):
+    status = 404
+    detail = "该qqchan_id不存在"
+
+
 class MeetscheduleBindingExisted(CquptddlException):
     status = 409
     detail = "你已经绑定过Meet课程表了，如需重新绑定，请先解绑"
