@@ -66,7 +66,8 @@ async def fetch_homework(
 
 
 def _check_platform_cooldown(platform_info: PlatformInfo):
-    now = datetime.now()  # noqa: DTZ005
+    now = datetime.now().astimezone()
+    # 库内时间经SQLModel读出后一律是aware(UTC)，两边都是aware，可直接相减比较
     if now - platform_info.last_refreshed_homework < timedelta(
         seconds=core.config.homework_cooldown_ttl
     ):

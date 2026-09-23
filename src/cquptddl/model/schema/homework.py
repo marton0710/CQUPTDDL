@@ -1,8 +1,13 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
-from pydantic import UUID5, BaseModel, Field
+from pydantic import UUID5, BaseModel, Field, field_serializer
 
+from cquptddl.core.config import config
 from cquptddl.model.schema.platform import PlatformEnum
+
+# 库内时间统一按UTC存储，对外按配置时区展示，避免各客户端各自换算
+_DISPLAY_TZ = ZoneInfo(config.ics_timezone)
 
 
 class Homework(BaseModel):
@@ -21,11 +26,11 @@ class Homework(BaseModel):
     platform: PlatformEnum = Field(description="作业平台")
     done: bool = Field(False, description="是否已完成")
 
-    # @field_serializer("deadline")
-    # def serialize_deadline(self, value: datetime | None) -> int:
-    #     if value is None:
-    #         return 0
-    #     return int(value.timestamp())
+    @field_serializer("deadline")
+    def serialize_deadline(self, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        return value.astimezone(_DISPLAY_TZ)
 
     # @model_validator(mode="after")
     # def generate_id(self) -> Homework:
@@ -41,6 +46,10 @@ class HomeworkResponse(BaseModel):
     count: int
     last_refresh_time: datetime
     homeworks: list[Homework]
+
+    @field_serializer("last_refresh_time")
+    def serialize_last_refresh_time(self, value: datetime) -> datetime:
+        return value.astimezone(_DISPLAY_TZ)
 
 
 class HomeworkCompleteInput(BaseModel):

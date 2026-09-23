@@ -60,7 +60,7 @@ async def bind(
             platform=platform_name,
             credentials=credentials_to_save,
             cookies=cookies,
-            last_refreshed_homework=datetime.fromtimestamp(0),  # noqa: DTZ006
+            last_refreshed_homework=datetime.fromtimestamp(0).astimezone(),
         )
     )
     core.bus.emit(PlatformBoundEvent(uid=user.id, platform_name=platform_name))

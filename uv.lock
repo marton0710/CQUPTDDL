@@ -4,16 +4,16 @@ requires-python = ">=3.14"
 
 [[package]]
 name = "abxbus"
-version = "2.5.57"
+version = "2.5.62"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
     { name = "uuid7" },
 ]
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/9a/a9/0531262d0bb0010fb10712b246360255316c5c37ce8b5f50d9a133cea21f/abxbus-2.5.57.tar.gz", hash = "sha256:094f06de3ae61b4b652995c0fa5cb8651550bb4f9da0a3e33eced9a69bc21144", size = 133386, upload-time = "2026-09-18T22:55:47.108Z" }
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/32/25/ba31026685e5653c9e2c8efe35469c36376ff649e6cf7c37d89cae7cf35a/abxbus-2.5.62.tar.gz", hash = "sha256:1e5a372338e392310a83a03c0e2185e0711566c72c177f34b902cbb055c482b8", size = 134211, upload-time = "2026-09-23T01:49:38.237Z" }
 wheels = [
-    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/27/a4/ff9e95751cb0b09804a60dc8b06187d683435af83f92a776526ec2c9d666/abxbus-2.5.57-py3-none-any.whl", hash = "sha256:2e2db3a8e6ff3802c0d42312a57b776bb15345d46e9dd3feb235a56c07bee7e2", size = 127246, upload-time = "2026-09-18T22:55:48.421Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/ea/e0/7f3b4c22606d7fed86aa3571949702ca6e92d1e6e09732ce68d61a65f9aa/abxbus-2.5.62-py3-none-any.whl", hash = "sha256:bc3d5f2ba3a9ccd568ac14b897d23e1beed292c0af7410bbc84a9240c35de1de", size = 127916, upload-time = "2026-09-23T01:49:39.611Z" },
 ]
 
 [[package]]
@@ -134,7 +134,7 @@ wheels = [
 
 [[package]]
 name = "cquptddl"
-version = "2.1"
+version = "2.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "abxbus" },

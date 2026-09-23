@@ -1,7 +1,13 @@
 from datetime import datetime
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
+
+from cquptddl.core.config import config
+
+# 库内时间统一按UTC存储，对外按配置时区展示，避免各客户端各自换算
+_DISPLAY_TZ = ZoneInfo(config.ics_timezone)
 
 
 class IcsSubscriptionSchema(BaseModel):
@@ -14,6 +20,12 @@ class IcsSubscriptionSchema(BaseModel):
     created_at: datetime = Field(description="创建时间")
     fetch_count: int = Field(0, description="被拉取次数")
     last_fetched_at: datetime | None = Field(None, description="最后一次拉取时间")
+
+    @field_serializer("created_at", "last_fetched_at")
+    def serialize_time(self, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        return value.astimezone(_DISPLAY_TZ)
 
 
 class IcsSubscriptionCreatedSchema(IcsSubscriptionSchema):
