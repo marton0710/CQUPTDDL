@@ -56,13 +56,18 @@ async def push_dying_homeworks(user_id: str, homeworks: Collection[Homework]):
     else:
         homework_msgs: list[str] = []
         for h in homeworks:
+            deadline = (
+                "无"
+                if h.deadline is None
+                else h.deadline.astimezone().strftime("%Y.%m.%d %H:%M:%S")
+            )
             homework_msgs.append(
                 SINGLE_HOMEWORK_TEMPLATE.format(
                     title=h.title,
                     url=h.url,
                     course=h.course_name,
                     platform=h.platform,
-                    deadline=h.deadline,
+                    deadline=deadline,
                 )
             )
         msg = DYING_HOMEWORK_TEMPLATE.format(homeworks="\n".join(homework_msgs))
@@ -95,13 +100,19 @@ async def push_new_homeworks(user_id: str, homework_ids: Collection[UUID]):
     c = await _get_user_qqpush_config(user_id)
     homework_msgs = list[str]()
     for h in homeworks:
+        for h in homeworks:
+            deadline = (
+                "无"
+                if h.deadline is None
+                else h.deadline.astimezone().strftime("%Y.%m.%d %H:%M:%S")
+            )
         homework_msgs.append(
             SINGLE_HOMEWORK_TEMPLATE.format(
                 title=h.title,
                 url=h.url,
                 course=h.course_name,
                 platform=h.platform,
-                deadline=h.deadline,
+                deadline=deadline,
             )
         )
     msg = NEW_HOMEWORK_TEMPLATE.format(homeworks="\n".join(homework_msgs))
