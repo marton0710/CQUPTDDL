@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Iterable
+from collections.abc import Collection
 from logging import getLogger
 from uuid import UUID
 
@@ -49,7 +49,7 @@ async def push_dying_homework(homework: Homework):
         buffer.setdefault(homework.user_id, []).append(homework)
 
 
-async def push_dying_homeworks(user_id: str, homeworks: Iterable[Homework]):
+async def push_dying_homeworks(user_id: str, homeworks: Collection[Homework]):
     c = await _get_user_qqpush_config(user_id)
     if not homeworks:
         msg = HOMEWORK_ALL_DONE_TEMPLATE.format(scope=c.qq_push_scope)
@@ -83,7 +83,7 @@ async def push_buffered_homeworks():
         buffer.clear()
 
 
-async def push_new_homeworks(user_id: str, homework_ids: Iterable[UUID]):
+async def push_new_homeworks(user_id: str, homework_ids: Collection[UUID]):
     if not homework_ids:
         return
 

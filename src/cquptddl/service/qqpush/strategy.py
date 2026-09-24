@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from datetime import time, timedelta
 from logging import INFO, getLogger
 from uuid import UUID
@@ -88,7 +88,7 @@ class ScheduledStrategy(QQPushStrategy):
 
     async def _job(self):  # ty: ignore[invalid-method-override]
         async with core.factory.get_session() as session:
-            homeworks_to_push: Iterable[Homework] = await core.symbol.call(
+            homeworks_to_push: Collection[Homework] = await core.symbol.call(
                 "homework.get_user_dying_homeworks",
                 session,
                 self.user_id,

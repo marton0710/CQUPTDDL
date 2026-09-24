@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from datetime import datetime, timedelta
 
 from sqlalchemy import func
@@ -72,7 +72,7 @@ async def delete_platform_homework(
 
 async def get_user_dying_homeworks(
     session: AsyncSession, user_id: str, scope: int | None = None
-) -> Iterable[Homework]:
+) -> Collection[Homework]:
     if scope is None:
         c = await session.get_one(QQPushConfig, user_id)
         scope = c.qq_push_scope
