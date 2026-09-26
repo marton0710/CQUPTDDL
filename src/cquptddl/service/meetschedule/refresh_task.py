@@ -381,7 +381,7 @@ async def _push_user(
                     type=EventType.HOMEWORK,
                     title=h.title,
                     time_mode=TimeMode.DUE_ONLY,
-                    end_at=h.deadline.isoformat(),
+                    end_at=h.deadline.astimezone().isoformat(),
                     linked_course_id=course_id_by_name.get(h.course_name),
                     note=h.platform,
                     done=h.done,
