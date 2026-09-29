@@ -47,7 +47,8 @@ class Platform(ABC):
     @classmethod
     @abstractmethod
     async def valid_cookie(cls, cookies: dict[str, str]) -> bool:
-        """检查cookie是否有效"""
+        """检查cookie是否有效
+        **警告：可能会http超时**"""
 
     @classmethod
     def get_platform_by_name(cls, name: PlatformEnum) -> type[Platform]:
