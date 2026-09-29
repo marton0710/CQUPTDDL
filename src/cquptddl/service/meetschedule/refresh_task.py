@@ -361,10 +361,6 @@ async def _push_user(
     homework_by_id: dict[UUID, Homework],
 ) -> list[ItemOutcome]:
     """推送（起点 PENDING）：为尚未镜像的作业在 Meet 上创建事件。"""
-    async with limiter.acquire(meet):
-        courses = await meet.courses.get_all(config.schedule_id)
-    course_id_by_name = {c.name: c.id for c in courses}
-
     bundle: list[tuple[UUID, EventInput]] = []
     outcomes: list[ItemOutcome] = []
     for e in group:
@@ -373,6 +369,7 @@ async def _push_user(
             # 作业已不存在 / 无截止时间（构造不出 due_only 事件）→ 无法镜像，删跟踪。
             outcomes.append(ItemOutcome(e.id, RemoteResult.PERMANENT))
             continue
+        note = f"课程：{h.course_name}\n平台：{h.platform}"
         bundle.append(
             (
                 e.id,
@@ -382,8 +379,8 @@ async def _push_user(
                     title=h.title,
                     time_mode=TimeMode.DUE_ONLY,
                     end_at=h.deadline.astimezone().isoformat(),
-                    linked_course_id=course_id_by_name.get(h.course_name),
-                    note=h.platform,
+                    linked_course_id=None,
+                    note=note,
                     done=h.done,
                 ),
             )
