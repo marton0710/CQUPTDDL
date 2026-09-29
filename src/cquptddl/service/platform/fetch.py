@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime, timedelta
 from logging import INFO, getLogger
@@ -16,6 +17,7 @@ from .base import Platform
 
 _logger = getLogger(__name__)
 _logger.setLevel(INFO)
+_refresh_cooldown_locks = defaultdict(asyncio.Lock)
 
 
 async def fetch_homework(
@@ -33,7 +35,7 @@ async def fetch_homework(
     if platform_info is None:
         raise PlatformNotBound
     if check_cooldown:
-        _check_platform_cooldown(platform_info)
+        await _check_platform_cooldown(user.id, platform_name)
     platform = Platform.get_platform_by_name(platform_name)
     for attempt_time in range(core.config.homework_refresh_attempts):
         try:
@@ -65,11 +67,15 @@ async def fetch_homework(
     return homeworks
 
 
-def _check_platform_cooldown(platform_info: PlatformInfo):
-    now = datetime.now().astimezone()
-    # 库内时间经SQLModel读出后一律是aware(UTC)，两边都是aware，可直接相减比较
-    if now - platform_info.last_refreshed_homework < timedelta(
-        seconds=core.config.homework_cooldown_ttl
+async def _check_platform_cooldown(user_id: str, platform_name: PlatformEnum):
+    async with (
+        _refresh_cooldown_locks[(user_id, platform_name)],
+        core.factory.get_session() as session,
     ):
-        raise RefreshCoolingDown
-    platform_info.last_refreshed_homework = now
+        platform_info = await session.get_one(PlatformInfo, (user_id, platform_name))
+        now = datetime.now().astimezone()
+        if now - platform_info.last_refreshed_homework < timedelta(
+            seconds=core.config.homework_cooldown_ttl
+        ):
+            raise RefreshCoolingDown
+        platform_info.last_refreshed_homework = now

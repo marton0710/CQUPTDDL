@@ -465,8 +465,8 @@ async def _update_user(
         async with limiter.acquire(meet):
             try:
                 await meet.events.update(e.meet_event_id, EventPatch(done=h.done))
-            except NotFoundError as exc:
-                _logger.warning("更新作业%s：远端事件已不存在", e.id, exc_info=exc)
+            except NotFoundError:
+                _logger.warning("更新作业%s：远端事件已不存在", e.id)
                 outcomes.append(ItemOutcome(e.id, RemoteResult.MISSING))
                 continue
             except UnauthorizedError, ForbiddenError:
