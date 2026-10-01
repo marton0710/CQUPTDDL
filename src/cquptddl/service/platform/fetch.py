@@ -39,18 +39,16 @@ async def fetch_homework(
     platform = Platform.get_platform_by_name(platform_name)
     for attempt_time in range(core.config.homework_refresh_attempts):
         try:
-            homeworks = await platform.get_homework(platform_info.cookies, user.id)
-        except InvalidPlatformCookie:
-            if attempt_time >= core.config.homework_refresh_attempts - 1:
-                raise
-            _logger.debug(
-                "用户%s在平台%s的token已过期，正在重新登录(%s/%s)",
-                user.id,
-                platform_name,
-                attempt_time + 1,
-                core.config.homework_refresh_attempts - 1,
-            )
-            await auth.relogin(session, user, platform_name)
+            try:
+                homeworks = await platform.get_homework(platform_info.cookies, user.id)
+            except InvalidPlatformCookie:
+                _logger.debug(
+                    "用户%s在平台%s的token已过期，正在重新登录",
+                    user.id,
+                    platform_name,
+                )
+                await auth.relogin(session, user, platform_name)
+                homeworks = await platform.get_homework(platform_info.cookies, user.id)
         except httpx.TimeoutException:
             if attempt_time >= core.config.homework_refresh_attempts - 1:
                 raise
