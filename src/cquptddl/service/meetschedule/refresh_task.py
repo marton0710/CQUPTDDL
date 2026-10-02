@@ -129,7 +129,7 @@ async def _job():
     后续阶段剔除（不再对其打无效请求），等所有阶段跑完后统一本地解绑——
     避免在阶段循环中间删数据而污染快照分区。
     """
-    async with core.get_session() as session:
+    async with core.factory.get_session() as session:
         rows = (await session.execute(select(MeetscheduleEntry))).scalars().all()
         partitions = {
             phase: [e for e in rows if e.status == _PHASE_SOURCE_STATUS[phase]]

@@ -3,13 +3,12 @@ from logging import INFO, getLogger
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Query, Request, Response
 
 from cquptddl import core
 from cquptddl.exc import CquptddlException
-from cquptddl.middleware.auth import need_login
-from cquptddl.model.db import User
+from cquptddl.middleware.auth import UserDep
+from cquptddl.middleware.session import SessionDep
 from cquptddl.model.schema.ics import (
     IcsSubscriptionCreatedSchema,
     IcsSubscriptionSchema,
@@ -42,8 +41,8 @@ def _etag_matches(if_none_match: str | None, etag: str) -> bool:
 
 @router.get("/subscription")
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
 ) -> list[IcsSubscriptionSchema]:
     subscriptions = await core.symbol.call("ics.list_subscriptions", session, user.id)
     return [IcsSubscriptionSchema.model_validate(i.model_dump()) for i in subscriptions]
@@ -51,8 +50,8 @@ async def _(
 
 @router.post("/subscription")
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
 ) -> IcsSubscriptionCreatedSchema:
     subscription, token = await core.symbol.call(
         "ics.create_subscription", session, user.id
@@ -65,8 +64,8 @@ async def _(
 
 @router.delete("/subscription/{subscription_id}", status_code=204)
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
     subscription_id: UUID,
 ):
     await core.symbol.call("ics.delete_subscription", session, user.id, subscription_id)
@@ -74,7 +73,7 @@ async def _(
 
 @router.get("/feed/{token}.ics", response_class=Response)
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
+    session: SessionDep,
     request: Request,
     token: str,
     platform: Annotated[PlatformEnum | None, Query()] = None,

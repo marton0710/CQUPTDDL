@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 from cquptddl import core
-from cquptddl.core import get_session
 from cquptddl.model.db import Homework
 from cquptddl.model.db.platform_info import PlatformInfo
 from cquptddl.model.db.qqpush_config import QQPushConfig
@@ -55,7 +54,7 @@ async def get_last_refresh_time(
 
 
 async def delete_platform_homework_event_callback(e: PlatformUnboundEvent):
-    async with get_session() as session:
+    async with core.factory.get_session() as session:
         await delete_platform_homework(session, e.uid, e.platform_name)
 
 

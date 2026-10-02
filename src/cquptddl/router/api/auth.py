@@ -1,14 +1,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends
+from fastapi import APIRouter, Cookie
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
 from cquptddl.core.config import config
-from cquptddl.middleware.auth import need_login
-from cquptddl.model.db.user import User
+from cquptddl.middleware.auth import UserDep
+from cquptddl.middleware.session import SessionDep
 from cquptddl.model.schema.auth import (
     GetLoginQRCodeOutput,
     LoginInput,
@@ -24,9 +23,9 @@ router = APIRouter()
 @router.post("/login", response_model=LoginOutput)
 async def _(
     model: LoginInput,
-    session: Annotated[AsyncSession, Depends(core.depends_session)],
+    session: SessionDep,
 ) -> JSONResponse:
-    _result: tuple[str, str, str] = await core.call(
+    _result: tuple[str, str, str] = await core.symbol.call(
         "auth.password_login", session, model.username, model.password
     )
     access_token, refresh_token, name = _result
@@ -60,7 +59,7 @@ async def _() -> GetLoginQRCodeOutput:
 
 @router.post("/qrcode_login", response_model=LoginOutput)
 async def _(
-    session: Annotated[AsyncSession, Depends(core.depends_session)],
+    session: SessionDep,
     model: QRCodeLoginInput,
 ) -> JSONResponse:
     _result: tuple[str, str, str] = await core.symbol.call(
@@ -89,10 +88,10 @@ async def _(
 
 @router.post("/refresh")
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
+    session: SessionDep,
     refresh_token: Annotated[str, Cookie()],
 ):
-    _result: tuple[str, str] = await core.call(
+    _result: tuple[str, str] = await core.symbol.call(
         "auth.refresh_token", session, refresh_token
     )
     new_access_token, new_refresh_token = _result
@@ -117,8 +116,8 @@ async def _(
 
 @router.get("/me")
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
 ) -> Userinfo:
     qqpush_config: QQPushConfigSchema = await core.symbol.call(
         "qqpush.get_configure", session, user.id
@@ -137,8 +136,8 @@ async def _(
 
 
 @router.post("/logout", status_code=204)
-async def _(user: Annotated[User, Depends(need_login)]):
-    await core.call("auth.logout", user)
+async def _(user: UserDep):
+    await core.symbol.call("auth.logout", user)
     resp = Response(status_code=204)
     resp.delete_cookie("token")
     resp.delete_cookie("refresh_token", "/api/auth/refresh")
@@ -147,8 +146,8 @@ async def _(user: Annotated[User, Depends(need_login)]):
 
 @router.delete("/me", status_code=204)
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
 ):
     await core.symbol.call("auth.delete_account", session, user)
     resp = Response(status_code=204)

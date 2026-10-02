@@ -26,7 +26,7 @@ async def login_with_ddl_account(user: User, service: str) -> str:
             _logger.debug(
                 "用户%s尝试cookie登录平台%s失败，尝试relogin", user.id, service
             )
-            await core.call("auth.relogin", user)
+            await core.symbol.call("auth.relogin", user)
             _logger.debug("重新登录成功，正在重试")
             continue
         except fuckids.errors.LoginFailed as e:

@@ -62,7 +62,7 @@ async def _api_client(maker: SessionMaker) -> AsyncGenerator[AsyncClient]:
     async def override_need_login() -> User:
         return fake_user
 
-    app.dependency_overrides[core.depends_session] = override_session
+    app.dependency_overrides[core.factory.depends_session] = override_session
     app.dependency_overrides[need_login] = override_need_login
     try:
         async with AsyncClient(

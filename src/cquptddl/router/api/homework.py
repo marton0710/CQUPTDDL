@@ -3,15 +3,14 @@ from logging import INFO, getLogger
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Query
 
 from cquptddl import core
 from cquptddl.exc import (
     CquptddlException,
 )
-from cquptddl.middleware.auth import need_login
-from cquptddl.model.db import User
+from cquptddl.middleware.auth import UserDep
+from cquptddl.middleware.session import SessionDep
 from cquptddl.model.schema.homework import (
     Homework as HomeworkSchema,
 )
@@ -34,8 +33,8 @@ _logger.setLevel(INFO)
 
 @router.get("")
 async def _(
-    user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
+    user: UserDep,
+    session: SessionDep,
     num: Annotated[int, Query(ge=-1, le=30)] = -1,
     page: Annotated[int, Query(ge=1)] = 1,
     platform: Annotated[PlatformEnum | None, Query()] = None,
@@ -44,15 +43,15 @@ async def _(
     Args:
         num: 一页的作业数量，-1为所有作业
     """
-    homeworks = await core.call(
+    homeworks = await core.symbol.call(
         "homework.get_cached_homework", session, user.id, platform, num, page
     )
     resp = HomeworkResponse(
         homeworks=[HomeworkSchema.model_validate(i.model_dump()) for i in homeworks],
-        count=await core.call(
+        count=await core.symbol.call(
             "homework.get_cached_homework_count", session, user.id, platform
         ),
-        last_refresh_time=await core.call(
+        last_refresh_time=await core.symbol.call(
             "homework.get_last_refresh_time", session, user.id, platform
         ),
     )
@@ -62,18 +61,18 @@ async def _(
 
 @router.post("/refresh")
 async def refresh(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
     platform: Annotated[PlatformEnum | None, Query()] = None,
 ) -> list[str]:
     if platform is not None:
-        await core.call("homework.refresh_homework", session, user, platform)
+        await core.symbol.call("homework.refresh_homework", session, user, platform)
         return []
     else:
         prompts = []
         for p in PlatformEnum:
             try:
-                await core.call("homework.refresh_homework", session, user, p)
+                await core.symbol.call("homework.refresh_homework", session, user, p)
             except CquptddlException as e:
                 prompts.append(
                     REFRESH_HOMEWORK_PROMPT_TEMPLATE.format(platform=p, info=e)
@@ -91,9 +90,9 @@ async def refresh(
 
 @router.post("/{id}/complete", status_code=204)
 async def _(
-    user: Annotated[User, Depends(need_login)],
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
+    user: UserDep,
+    session: SessionDep,
     id: UUID,
     model: HomeworkCompleteInput,
 ):
-    await core.call("homework.complete", session, user.id, id, model.is_complete)
+    await core.symbol.call("homework.complete", session, user.id, id, model.is_complete)

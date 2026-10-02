@@ -1,11 +1,8 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 
 from cquptddl import core
-from cquptddl.middleware.auth import need_login
-from cquptddl.model.db import User
+from cquptddl.middleware.auth import UserDep
+from cquptddl.middleware.session import SessionDep
 from cquptddl.model.schema.meetschedule import MeetscheduleConfigSchema
 
 router = APIRouter()
@@ -13,8 +10,8 @@ router = APIRouter()
 
 @router.post("/bind", status_code=204)
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
     model: MeetscheduleConfigSchema,
 ):
     await core.symbol.call(
@@ -24,7 +21,7 @@ async def _(
 
 @router.delete("/bind", status_code=202)
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
 ):
     await core.symbol.call("meetschedule.unbind", session, user.id)

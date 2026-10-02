@@ -8,7 +8,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
-from cquptddl.core import config
+from cquptddl import core
 from cquptddl.exc import IcsSubscriptionNotFound
 from cquptddl.model.db.ics_subscription import IcsSubscription
 from cquptddl.model.schema.platform import PlatformEnum
@@ -108,11 +108,11 @@ async def render_feed(
         raise IcsSubscriptionNotFound
 
     homeworks = await get_feed_homeworks(session, subscription.user_id, platform)
-    tz = ZoneInfo(config.ics_timezone)
+    tz = ZoneInfo(core.config.ics_timezone)
     body = render_ics(
         homeworks,
         tz=tz,
-        duration=timedelta(minutes=config.ics_event_duration_minutes),
+        duration=timedelta(minutes=core.config.ics_event_duration_minutes),
         dtstamp=to_aware(subscription.created_at, tz).astimezone(UTC),
     )
     await _record_fetch(session, subscription.id)

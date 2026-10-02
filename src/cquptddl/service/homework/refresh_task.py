@@ -62,7 +62,7 @@ def del_job(uid: str, platform_name: PlatformEnum):
 
 async def _job(uid: str, platform_name: PlatformEnum):
     try:
-        async with core.get_session() as session:
+        async with core.factory.get_session() as session:
             user = await session.get_one(User, uid)
             await refresh_homework(session, user, platform_name)
             _logger.info("用户%s在平台%s的作业自动刷新成功", uid, platform_name)

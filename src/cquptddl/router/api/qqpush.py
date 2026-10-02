@@ -2,12 +2,12 @@ from collections.abc import Iterable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
-from cquptddl.middleware.auth import need_login
+from cquptddl.middleware.auth import UserDep
 from cquptddl.middleware.qqpush import verify_api_key
-from cquptddl.model.db import Homework, User
+from cquptddl.middleware.session import SessionDep
+from cquptddl.model.db import Homework
 from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.schema.qqpush import QQPushConfigSchema
 
@@ -16,8 +16,8 @@ router = APIRouter()
 
 @router.post("/configure", status_code=204)
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
-    user: Annotated[User, Depends(need_login)],
+    session: SessionDep,
+    user: UserDep,
     model: QQPushConfigSchema,
 ):
     await core.symbol.call("qqpush.configure", session, user.id, model)
@@ -25,7 +25,7 @@ async def _(
 
 @router.post("/_/dying_homeworks")
 async def _(
-    session: Annotated[AsyncSession, Depends(core.factory.depends_session)],
+    session: SessionDep,
     _: Annotated[None, Depends(verify_api_key)],
     qqchan_id: str,
 ):
