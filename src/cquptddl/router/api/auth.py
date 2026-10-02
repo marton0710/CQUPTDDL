@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 
 from cquptddl import core
 from cquptddl.core.config import config
@@ -20,17 +20,13 @@ from cquptddl.model.schema.qqpush import QQPushConfigSchema
 router = APIRouter()
 
 
-@router.post("/login", response_model=LoginOutput)
-async def _(
-    model: LoginInput,
-    session: SessionDep,
-) -> JSONResponse:
+@router.post("/login")
+async def _(model: LoginInput, session: SessionDep, resp: Response) -> LoginOutput:
     _result: tuple[str, str, str] = await core.symbol.call(
         "auth.password_login", session, model.username, model.password
     )
     access_token, refresh_token, name = _result
 
-    resp = JSONResponse(LoginOutput(name=name).model_dump())
     resp.set_cookie(
         "token",
         access_token,
@@ -46,7 +42,7 @@ async def _(
         secure=not config.DEBUG,
         httponly=True,
     )
-    return resp
+    return LoginOutput(name=name)
 
 
 @router.get("/qrcode_login")
@@ -57,17 +53,15 @@ async def _() -> GetLoginQRCodeOutput:
     return GetLoginQRCodeOutput(qrcode_url=qrcode_url, session_id=session_id)
 
 
-@router.post("/qrcode_login", response_model=LoginOutput)
+@router.post("/qrcode_login")
 async def _(
-    session: SessionDep,
-    model: QRCodeLoginInput,
-) -> JSONResponse:
+    session: SessionDep, model: QRCodeLoginInput, resp: Response
+) -> LoginOutput:
     _result: tuple[str, str, str] = await core.symbol.call(
         "auth.qrcode_login", session, model.qrlogin_session_id, model.clear_password
     )
     access_token, refresh_token, name = _result
 
-    resp = JSONResponse(LoginOutput(name=name).model_dump())
     resp.set_cookie(
         "token",
         access_token,
@@ -83,19 +77,17 @@ async def _(
         secure=not config.DEBUG,
         httponly=True,
     )
-    return resp
+    return LoginOutput(name=name)
 
 
-@router.post("/refresh")
+@router.post("/refresh", status_code=204)
 async def _(
-    session: SessionDep,
-    refresh_token: Annotated[str, Cookie()],
+    session: SessionDep, refresh_token: Annotated[str, Cookie()], resp: Response
 ):
     _result: tuple[str, str] = await core.symbol.call(
         "auth.refresh_token", session, refresh_token
     )
     new_access_token, new_refresh_token = _result
-    resp = Response(status_code=204)
     resp.set_cookie(
         "token",
         new_access_token,
@@ -111,7 +103,6 @@ async def _(
         secure=not config.DEBUG,
         httponly=True,
     )
-    return resp
 
 
 @router.get("/me")
@@ -136,21 +127,14 @@ async def _(
 
 
 @router.post("/logout", status_code=204)
-async def _(user: UserDep):
+async def _(user: UserDep, resp: Response):
     await core.symbol.call("auth.logout", user)
-    resp = Response(status_code=204)
     resp.delete_cookie("token")
     resp.delete_cookie("refresh_token", "/api/auth/refresh")
-    return resp
 
 
 @router.delete("/me", status_code=204)
-async def _(
-    session: SessionDep,
-    user: UserDep,
-):
+async def _(session: SessionDep, user: UserDep, resp: Response):
     await core.symbol.call("auth.delete_account", session, user)
-    resp = Response(status_code=204)
     resp.delete_cookie("token")
     resp.delete_cookie("refresh_token", "/api/auth/refresh")
-    return resp

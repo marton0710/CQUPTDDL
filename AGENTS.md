@@ -1,174 +1,136 @@
 # AGENTS.md — CQUPTDDL（重邮聚合截止线）后端
 
-给 AI/新人的跨会话速查手册。先读这里，别再从零探索。约 4k 行 Python，全部代码在 `src/cquptddl/`。
+跨会话速查手册，先读这里。约 4.7k 行 Python，全在 `src/cquptddl/`。
 
-## 1. 项目是什么
+## 1. 项目速览
 
-聚合 **学在重邮 / 学习通 / 雨课堂** 三平台的作业，提供 REST API；可选把作业同步为 **Meet课程表** 事件，并通过 QQ 机器人（qqchan）推送临期/新作业提醒。
+聚合 **学在重邮 / 学习通 / 雨课堂** 作业的 REST API；可选同步成 **Meet课程表** 事件，并经 QQ 机器人（qqchan）推送临期/新作业。
 
-- Python **>=3.14**（用到 `uuid7`、`itertools.batched`），包管理 **uv**。
-- 入口：`cquptddl:main` → `uvicorn cquptddl:app`（见 `src/cquptddl/__init__.py`）。
-- 运行：`uv run cquptddl`；依赖装到 `.venv/`（含 `uvicorn`、`dotenv` 等可执行文件）。
-- **无项目级 lint/类型检查配置**（`pyproject.toml` 里没有 ruff/ty 段，也没有 `ruff.toml`/`ty.toml`），但开发者**全局安装了 `ty` 与 `ruff`**，改动后必须用它们检查（见 §7）。`tests/` 有 `test_ics_feed.py`（ICS 渲染的纯函数单测）和 `test_ics_subscription.py`（用 `aiosqlite` 内存库跑订阅的增删改查与拉取统计），都用 pytest；dev 依赖 `aiosqlite`、`respx`、`pytest`，其中 `respx` 目前未被任何代码使用。
-- `README.md` 是空文件。分支：当前 `v2`（开发分支），`master` 落后于 `v2`；远端 `git@github.com:marton0710/CQUPTDDL.git`。
-- 部署：`Dockerfile` 用 python:3.14-alpine，从自建源 `pypi.bail.asia` 装包，前端目录挂到 `/fe`（`FRONTEND_DIR`），暴露 8000。
+- Python **>=3.14**（`uuid7`、`itertools.batched`）+ **uv**；入口 `cquptddl:main`，运行 `uv run cquptddl`（`DEBUG=true` 时 reload 且只监听 127.0.0.1）。
+- 开发分支 `v2`（`master` 落后），远端 `git@github.com:marton0710/CQUPTDDL.git`；`README.md` 是空的。
+- 部署：`Dockerfile`（python:3.14-alpine）从自建源 `pypi.bail.asia` 装包，前端 `COPY fe /fe` 由 `FRONTEND_DIR` 指向，暴露 8000。
+- 前端静态托管在 `router/__init__.py`：`FRONTEND_DIR` 有值才 `router.frontend("/", ..., fallback="index.html")`，随 `app.include_router` 生效。
 
-## 2. 架构骨架（务必先理解这 4 个机制）
+## 2. 配置、检查与验证
 
-### 2.1 依赖注入：`core.factory`
-- `core.depends_session` / `depends_client`：FastAPI 依赖，交出 session/client。
-- `core.get_session()` / `get_client()`：把上面两个包成 `asynccontextmanager`，**给非路由代码（事件回调、后台任务）用**。
-- `depends_session` 在 `yield` **之后** `commit()`。所以路由里不 commit 也会落库；但后台任务用 `get_session()` 时同样会自动 commit —— 不要让同一 session 并发。
-- `depends_client` 自动加 `User-Agent: CQUPTDDL/<版本>`，传 `headers=` 时是合并而非覆盖。
+- 配置来自 `.env`（`pydantic-settings`，`extra="ignore"`，大小写不敏感），见 `core/config.py`。**必需**：`DATABASE_URL`、`SECRET_KEY`、`QQBOT_URL`、`QQBOT_RECV_API_KEY`、`QQBOT_SEND_API_KEY`。没有 `.env.example`（`.env` 已 gitignore），根目录有本地 `test.db`。
+- **建表只有 `SQLModel.metadata.create_all`**（`core/db.py:_migrate_db`）：只建缺失的表，**永不 ALTER**。改字段/类型得自己写一次性迁移或重建库，别往 `_migrate_db` 塞自动迁移。
+- 改完 `.py` 必须在**仓库根**跑 `ty check && ruff check . && ruff format --check .`（`ty`/`ruff` 是全局命令，不在 `.venv`，`pyproject.toml` 里也没有配置段）。基线三条全绿（format 输出 `87 files already formatted`）；**不要 `ruff format .` 全量改写**，要修只 format 单个文件。
+- `ty` 会被 SQLModel 表达式误报：`select(M).where(列 == 值)` 常判 `invalid-argument-type`，照现有代码挂 `# ty: ignore[invalid-argument-type]`（`select(M.id)` / `select(func.count())` 一般不用）。抑制写 `# ty: ignore[规则]` / `# noqa: 规则`，不是 `# type: ignore`；只读文件系统下 ruff 加 `--no-cache`。
+- 验证：`uv run python -c "import cquptddl"` 能抓大部分 import / 符号注册错误，`/docs` 看路由；注意它会读 `.env` 并连库。
 
-### 2.2 符号表 `core.symbol`：服务层解耦层
-`core.export("名字", 函数)` / `core.call("名字", *args)`。**跨 service 调用一律走符号表**，不直接 import 别的 service。
-全部导出名（grep `core.symbol.export` / `core.export` 可复核）：
-- `auth.*`：`password_login`、`get_login_qrcode`、`qrcode_login`、`relogin`、`get_user_from_token`、`refresh_token`、`logout`、`delete_account`
-- `crypto.aes_encrypt` / `crypto.aes_decrypt`
-- `platform.get_auth_method` / `bind` / `unbind` / `valid_cookie` / `fetch_homework`
-- `homework.refresh_homework` / `complete` / `get_cached_homework` / `get_cached_homework_count` / `get_last_refresh_time` / `get_user_dying_homeworks` / `get_user_homeworks_with_deadline`
-- `qqpush.configure` / `get_user_config_from_qqchan_id` / `push_dying_homeworks`
-- `meetschedule.bind` / `unbind`
-- `ics.list_subscriptions` / `create_subscription` / `delete_subscription` / `render_feed`
-⚠️ 名字重复 `export` 会抛 `NameError`；改函数名要同步改 `call()` 里的字符串（无类型检查兜底）。
+## 3. 架构四机制
 
-### 2.3 事件总线 `core.bus`（abxbus）
-模块**导入时**注册 `core.bus.on(Event, handler)`，靠 `service/__init__.py` 里 `from . import ...` 触发注册 —— **新增 service 模块必须在 `service/__init__.py` 导入**，否则事件不生效。
-事件定义全在 `model/event/__init__.py`：`UserRegisterEvent`（建 `QQPushConfig`）、`UserReloginRequiredEvent`、`HomeworkRefreshedEvent`（带 `new_homework_ids`）、`HomeworkDoneEvent`、`PlatformBound/Unbound`（增删刷新 job + 删作业）、`AutoRefreshHomeworkFailedEvent`、`AccountDeletedEvent`、`QQPushConfigChangedEvent`、`InvalidQQChanIDEvent`。
+### 3.1 依赖注入 `core.factory`
 
-### 2.4 跨 service 传 `User` 还是 `user_id`（重要约定）
-service 层接口**刻意不统一**：一部分收 ORM 实体 `User`，一部分只收 `user_id: str`。这不是没改完，按下面规则判断，别"顺手统一"：
+- `depends_session` / `depends_client`：FastAPI 依赖；路由用别名 `SessionDep`（`middleware.session`）、`UserDep`（`middleware.auth` = `need_login` 校验 `token` Cookie 后返回 `User`）。
+- `get_session()` / `get_client()`：`asynccontextmanager` 版，**给非路由代码（事件回调、后台任务）用**。
+- session 在 `yield` **之后** `commit()`：路由不 commit 也会落库，`get_session()` 同样；别让同一 session 并发。
+- `depends_client` 自动加 `User-Agent: CQUPTDDL/<版本>`，`headers=` 是合并非覆盖；未设 `timeout`，吃 httpx 默认 5s。
+- 独立短事务先例：`platform/fetch.py:_check_platform_cooldown` 用按 用户×平台 的 `asyncio.Lock` + 自己的 `get_session()` 读写 `last_refreshed_homework`，冷却中抛 429。
 
-- **传 `user_id: str`**：只需要按 uid 过滤 / 归属校验 / 建索引的接口。例：`homework.get_cached_homework` / `get_cached_homework_count` / `get_last_refresh_time` / `complete`、`platform.valid_cookie`、`qqpush.configure`、`platform.unbind`、`meetschedule.bind/unbind`、全部 ics 接口。
-- **传 `user: User`**：需要读或**回写** `password` / `ids_cookie` / `token_version` / `name` 的接口，或作为**公开扩展点契约**的接口。例：
-  - `auth.relogin` / `login` / `logout` —— 读 `password`（AES 解密）、回写 `ids_cookie` 和 `token_version`。
-  - `platform.login` → `base/utils.login_with_ddl_account(user, service)` —— 读 `ids_cookie`。
-  - `auth.delete_account` 及其钩子（`before_delete_user_hook` 的签名 `Callable[[AsyncSession, User], Awaitable[None]]`，最后 `session.delete(user)`）—— **钩子是给别的 service 用的通用接口，实体就是契约的一部分**，不要退化成 `user_id`。`meetschedule/event_handlers.on_delete_user` 虽然自身只用 `user.id`，也必须跟着签名走。
-- ⚠️ **改签名前先看调用链下游**：`platform/fetch.fetch_homework` 自己只用到 `user.id`，但因为它内部要调 `auth.relogin(session, user, ...)`，所以必须继续收 `User`——这是**传递性依赖**，不是漏改。
-- 属性使用分布（改动前实测）：`user.id` 40 处（可退化）、`token_version` 8、`password` 4、`ids_cookie` 3、`name` 1（均不可退化）。重构时以这个比例判断边界在哪。
+### 3.2 符号表 `core.symbol`
 
-### 2.5 后台任务
-- `core/task.background(coro, name)` 立即跑；`register()` + 启动后 `task.start()` 用于事件循环前注册。
-- APScheduler 三处：`homework/refresh_task.scheduler`（按平台间隔刷新作业，job id `homework_fetch_schedule_{uid}_{platform}`，间隔 `homework_cache_base_ttl`+jitter）、`qqpush/globals.scheduler`（推送策略）、`meetschedule/refresh_task.scheduler`（同步）。
-- 生命周期：`cquptddl/__init__.py:lifespan` → `core.init()`（建表 + 启 task）→ `service.init()`（建刷新 job、qqpush on_boot、meetschedule start_refresh）；关闭顺序相反。
+`core.symbol.export("名字", 函数)` / `core.symbol.call("名字", *args)`。**跨 service 调用一律走符号表**，别直接 import 别的 service。导出全表（`grep -rn "symbol.export" src` 可复核）：
 
-## 3. 目录职责
+- `auth.` `password_login` `get_login_qrcode` `qrcode_login` `relogin` `get_user_from_token` `refresh_token` `logout` `delete_account` `before_delete_user_hook`
+- `crypto.` `aes_encrypt` `aes_decrypt`；`platform.` `get_auth_method` `bind` `unbind` `valid_cookie` `fetch_homework`
+- `homework.` `refresh_homework` `complete` `get_cached_homework` `get_cached_homework_count` `get_last_refresh_time` `get_user_dying_homeworks` `get_user_homeworks_with_deadline`
+- `qqpush.` `configure` `get_configure` `get_user_config_from_qqchan_id` `push_dying_homeworks`；`meetschedule.` `bind` `unbind` `is_bound`
+- `ics.` `list_subscriptions` `create_subscription` `delete_subscription` `render_feed` `get_url_count`
+
+⚠️ 重名 `export` 抛 `NameError`；改函数名要同步改所有 `call()` 字符串，没有类型检查兜底。
+
+### 3.3 事件总线 `core.bus`（abxbus）
+
+handler 在**模块导入时**注册，靠 `service/__init__.py` 的 `from . import ...` 触发 —— **新增 service 模块必须加进 `service/__init__.py`**，否则事件不生效。事件全在 `model/event/__init__.py`：`UserRegisterEvent`（建 QQPushConfig）、`UserLoginEvent`、`UserReloginRequiredEvent`、`HomeworkRefreshedEvent`、`HomeworkDoneEvent`、`PlatformBound/UnboundEvent`、`AutoRefreshHomeworkFailedEvent`、`AccountDeletedEvent`、`QQPushConfigChangedEvent`。
+
+### 3.4 后台任务
+
+- `core.task.background(coro, name)` 立即跑；`register()` 供事件循环启动前登记，由 `core.init()` 的 `task.start()` 统一启动。
+- APScheduler 三处：`homework/refresh_task.scheduler`（按 用户×平台 刷新，job id `homework_fetch_schedule_{uid}_{platform}`，间隔 `homework_cache_base_ttl`+jitter）、`qqpush/globals.scheduler`、`meetschedule/refresh_task.scheduler`。
+- 生命周期 `cquptddl/__init__.py:lifespan`：`core.init()`（建表 + 启任务）→ `service.init()`（刷新 job、qqpush on_boot、meetschedule 钩子 + 同步）；关闭相反。
+
+## 4. 目录与数据模型
 
 ```
-core/       config(pydantic-settings 读 .env) / db(engine+建表) / factory / event_bus / task / symbol
-model/db/   SQLModel 表：User, Homework, PlatformInfo, QQPushConfig, MeetscheduleConfig, MeetscheduleEntry, IcsSubscription
-model/schema/  pydantic API 模型与枚举（PlatformEnum、AuthMethod）
-model/event/   事件定义
-router/api/ FastAPI 路由：auth / homework / ics / platform / qqpush / meetscheule(拼写如此)
-middleware/ need_login(token Cookie) / verify_api_key(X-API-Key)
-service/    auth, crypto, homework, ics, platform, qqpush, meetschedule
-exc.py      所有业务异常（继承 HTTPException，带 status/detail）
+core/       config / db / factory / symbol / event_bus / task
+model/db/   SQLModel 表：User Homework PlatformInfo QQPushConfig MeetscheduleConfig MeetscheduleEntry IcsSubscription
+model/schema/ API 模型与枚举（PlatformEnum、AuthMethod）     model/event/ 事件定义
+router/api/ auth homework ics platform qqpush meetscheule(文件名拼写如此，前缀 /meetschedule)
+middleware/ auth(UserDep) session(SessionDep) qqpush(verify_api_key: X-API-Key)
+service/    auth crypto homework ics platform qqpush meetschedule
+exc.py      业务异常（CquptddlException→HTTPException，类属性 status/detail）
 ```
-注意：`model/db/__init__.py` 的 `__all__` 里 `LastRefreshTime`、`PlatformCookies` **已不存在**，是历史残留。
 
-## 4. 关键数据模型
+`model/db/__init__.py` 的 `__all__` 里 `LastRefreshTime`、`PlatformCookies` 是历史残留，**已不存在**。
 
-- **User**：主键 `id` = 真实统一认证码；`password` 为 AES 密文（扫码登录为 `None`）；`token_version: UUID` 用于退出登录时批量失效 token。
-- **Homework**：主键 `id = uuid5(NAMESPACE, user_id + platform + platform_custom)`，即 `Homework.generate_id(user_id, platform, platform_custom)`。`platform_custom` 由各平台给出，且必须在**「用户 × 平台」范围内全局唯一**（不能只在课程内唯一）：学习通 `hmw_info["key"]`（实测 = `f"{taskrefId}-{classId}"`）、学在重邮 `item["id"]`、雨课堂 `str(item["id"])`。
-  ⚠️ **改这个函数等于改所有作业主键**：旧主键的行不会消失也不会被覆盖，而 `refresh_homework` 只增不删 → 新代码一上线就是整体重复一次。主键换规则必须配一次性迁移（仓库里原来的迁移脚本已删除，需要时自行重写）。
-- **PlatformInfo**：主键 `(user_id, platform)`；`credentials` 是 AES 密文 JSON；`last_refreshed_homework` 兼作**冷却计时**（`_check_platform_cooldown` 直接改它）。
-- **MeetscheduleEntry**：主键 = `homework.id`，但**只是弱外键**（`model/db/meetschedule_tracked_event.py` 已不声明 `foreign_key`；历史库上的物理外键是 `1758fa4` 之前留下的，已在生产手工删掉）。`status` 走 `pending → pending-update / pending-delete → success` 状态机。
-  ⚠️ 主键跟随 homework，所以任何改作业主键的操作**必须同步改这张表**：`entry.id` 指向一个不存在的作业时，PUSH/UPDATE 阶段会判 `PERMANENT` 并把 entry 删掉，而删远端 Meet 事件只走 DELETE 阶段 → 不处理就会在用户日历里留下**永远删不掉的孤儿事件**。
-- **PlatformEnum** 的枚举**值就是中文名**（`"学在重邮"`/`"学习通"`/`"雨课堂"`），API 路径参数也用它。
-- **IcsSubscription**：主键 `id`（uuid7）；`user_id` 建索引 + 外键 CASCADE，**一个用户可以有多条订阅**；`token_hash` 存 token 的 sha256（唯一索引），**明文只在创建时返回一次**；`created_at` 兼作 feed 里所有事件的 `DTSTAMP`；`fetch_count` / `last_fetched_at` 记录拉取统计（见 §5 ics）。
+- **User**：主键 `id` = 统一认证码；`password` 是 AES 密文（扫码登录为 `None`）；`token_version` 用于批量失效 token。
+- **Homework**：主键 `id = uuid5(NAMESPACE, user_id + platform + platform_custom)`（`Homework.generate_id`）。`platform_custom` 必须在**用户×平台**内唯一（学习通 `hmw_info["key"]`、学在重邮 `item["id"]`、雨课堂 `str(item["id"])`）。⚠️ 改它 = 改所有作业主键，而刷新**只增不删** → 上线即整体重复一遍，必须配一次性迁移。
+- **PlatformInfo**：主键 `(user_id, platform)`；`credentials` 是 AES 密文 JSON；`last_refreshed_homework` 兼冷却计时。
+- **MeetscheduleEntry**：主键 = `homework.id`，仅是**弱外键**（不声明 `foreign_key`）；`status` 走 `pending → pending-update / pending-delete → success`。⚠️ 任何改作业主键的操作必须同步改这张表，否则 PUSH/UPDATE 判 `PERMANENT` 删 entry，而删远端事件只走 DELETE → 用户日历里留下删不掉的孤儿事件。
+- **IcsSubscription**：主键 `id`（uuid7），**一个用户可多条**；`token_hash`=sha256(token) 唯一索引；`created_at` 兼作 feed 的 `DTSTAMP`；`fetch_count`/`last_fetched_at` 记拉取统计。
+- **PlatformEnum 的值就是中文名**（`"学在重邮"`/`"学习通"`/`"雨课堂"`），路径参数也用它。
 
-## 5. 各业务要点
+## 5. 跨 service 传 `User` 还是 `user_id`
 
-### auth（登录）
-- 统一认证走 `fuckids` 库：`password_login_async` / `get_qrcode_async` / `qrcode_login_async`。
-- **二维码会话存在进程内内存字典** `service/auth/ids.py:_qrcode_login_sessions`，多 worker 会失效；过期会话由 `_clear_expired_qrlogin_session()` 惰性清理（TTL=`qr_login_session_ttl`）。**不要退回成无界增长**（曾经是 bug）。二维码未扫描时返回 202（`QRCodeNotScanned`）。
-- JWT：uid 先 AES 加密再进 payload，`isrefresh` 区分 access/refresh，校验时比对 `token_version`。cookie：`token`（httpOnly）+ `refresh_token`（path 限定 `/api/auth/refresh`）。
-- AES 密钥 = `md5(SECRET_KEY)[:16]`，CBC，前 16 字节是 IV。**更换 `SECRET_KEY` 会导致已存密码/凭据全部解不开**。
-- `relogin`：扫码用户（password 为 None）无法自动重登 → 发 `UserReloginRequiredEvent` 并抛 510。
+刻意不统一，别"顺手统一"：
 
-### platform（三平台适配）
-抽象基类 `service/platform/base/__init__.py:Platform`，靠 `__init_subclass__` 自动注册到 `_platforms`，子类必须定义 `name` 和 `auth_method`（否则 `SyntaxError`）。新增平台 = 写 `Platform` 子类 + 在 `platform/__init__.py` import。
-- `login()` 返回 cookies；`get_homework()` 返回 `list[Homework]`；`valid_cookie()`。
-- 认证方式：学习通 = 账号密码（`AuthMethod.PASSWORD`，自写 `encryptByAES`，key 硬编码）；学在重邮 / 雨课堂 = 复用当前用户统一认证（`AuthMethod.CQUPT_IDS` → `base/utils.login_with_ddl_account`，内部会在 cookie 失效时自动 `auth.relogin` 重试一次）。
-- 雨课堂登录后要**重排 `sessionid` cookie** 才能让 `cqupt.yuketang.cn` 与 `changjiang.yuketang.cn` 共享。
-- `fetch_homework()` 统一封装：未绑定 → 428 `PlatformNotBound`；冷却中 → 429 `RefreshCoolingDown`；另受 `homework_refresh_attempts`（默认 3，`Field(ge=1)`）约束，一次调用最多请求 3 次，**只对 `httpx.TimeoutException` 超时重试**（固定间隔 1s），cookie 失效则 `auth.relogin` 后重试；次数用尽后**原样抛出最后一次异常**（不要把超时吞成空列表，否则刷新会静默失败）。注意 `get_client()` 未显式设 `timeout`，目前吃 httpx 默认的 5s。
-- 解析失败**不要抛异常**：学习通对未知收件箱用专门的 `chaoxing:unknown-inbox` logger 记录并 `continue`（该 logger 在非 DEBUG 下被禁用）。
+- **只收 `user_id: str`**：按 uid 过滤 / 归属校验的接口 —— `homework.*` 查询与 `complete`、`platform.valid_cookie`/`unbind`、`qqpush.configure`、`meetschedule.bind`/`unbind`、全部 ics 接口。
+- **收 `User`**：要读 / 回写 `password`、`ids_cookie`、`token_version`、`name` 的（`auth.relogin`/`login`/`logout`、`platform.bind`/`relogin`），或本身是**扩展点契约**的（`auth.delete_account` 与钩子 `before_delete_user_hook(session, User)`，最后 `session.delete(user)`）。
+- ⚠️ 改签名先看下游：`platform.fetch_homework` 自己只用 `user.id`，但内部要调 `auth.relogin(session, user, ...)`，所以必须继续收 `User`（传递性依赖，不是漏改）。
 
-### homework（缓存/刷新）
-- 刷新**只新增，不删除**（删除逻辑在 `refresh_homework.py` 里被注释掉了）。完成状态 `done` 是本地状态，不是平台状态（除 meetschedule PULL 会回写）。
-- 缓存 TTL = `homework_cache_base_ttl` + 最多 `homework_cache_jitter`；手动刷新冷却 `homework_cooldown_ttl`。
-- `get_last_refresh_time` 用 `max()`，代码里标了 `XXX` 争议（多平台不同步刷新）。
-- 多平台刷新时 `router/api/homework.py` 把异常转成给用户看的提示字符串列表，未知异常带 uuid 错误码。
+## 6. 业务要点
 
-### qqpush（QQ 推送）
-- **现役实现是 `push.py`**（走 qqchan `/qqchan/send`，发纯文本，未传 `ismarkdown`）：`__init__.py`、`strategy.py`、`on_boot.py` 都只 import 它。
-- `push_wild.py` 与 `push_official.py` 是**同源的死代码**（历史版本，`push_official` 多传 `ismarkdown=True`）—— 全仓库零引用。**改推送逻辑只需改 `push.py`**；但若将来要切回官方 API，这两个文件的差异就是参考。
-- 后端主动推游戏机器人用 `QQBOT_RECV_API_KEY`；机器人回调后端用 `QQBOT_SEND_API_KEY`（`X-API-Key` 头）。命名与 qqbot 端一致，**不是对称的**。
-- 策略：`ScheduledStrategy`（cron 定时推 scope 小时内截止）与 `RealtimeStrategy`（每个作业一个 job，在 `deadline - scope` 触发）。实时推送经 `buffer`（带 asyncio.Lock）由 5 秒间隔的 `push_buffered_homeworks` 合并发送。
-- 未绑定 qqchan_id 时静默跳过；推送返回 `"无此id"` → 发 `InvalidQQChanIDEvent` 清空绑定。
+### auth
 
-### meetschedule（同步到 Meet课程表）
-核心在 `refresh_task.py`（610 行，最复杂）。要点：
-- `_job` 每 `meetschedule_sync_interval` 秒一次，固定顺序 **PUSH → UPDATE → DELETE → PULL**；阶段内按 user 分组，每组一个 client + `AsyncMeetSchedule`。
-- 远程结果只分 `OK / MISSING / PERMANENT / TRANSIENT`，本地动作**只由唯一真值表 `_transition(phase, result)` 决定**。改同步规则就改这里，别在阶段中间删数据。
-- 无显式重试计数/退避：TRANSIENT 保持状态靠下轮重试；PERMANENT(422/409) 与"作业不存在/无 deadline"直接删跟踪，避免无限重试。
-- 401/403 → 用户加入 `to_unbind`，四阶段跑完后删其全部条目 + `MeetscheduleConfig`。
-- 限流 `limiter.throttle`：60 次/分钟（FIXED_WINDOW，MemoryStore，**进程内**，多 worker 不共享）；限流 key 取 SDK 私有属性 `meet._client.headers["X-API-Key"]`（**SDK 一改就炸**）。
-- 批量 100；push 必须 `allow_duplicate_title=True`；`create_batch` 返回数量与请求不符 → 整批 TRANSIENT（防重复创建）。
-- 绑定要校验 key 权限 `SCHEDULE_READ + ENTITIES_READ + ENTITIES_WRITE`（不足 → 403）。
+- 统一认证走 `fuckids`；二维码会话在**进程内字典** `service/auth/ids.py:_qrcode_login_sessions`（多 worker 失效），TTL `qr_login_session_ttl`，`_clear_expired_qrlogin_session()` 惰性清理 —— 别退回无界增长。未扫描返回 202。
+- JWT：uid 先 AES 加密再进 payload，`isrefresh` 区分 access/refresh，校验比对 `token_version`；Cookie 为 `token`（httpOnly）+ `refresh_token`（path 限 `/api/auth/refresh`）。
+- AES 密钥 = `md5(SECRET_KEY)[:16]`，CBC，前 16 字节 IV。**换 `SECRET_KEY` 会让已存密码 / 凭据全部解不开**。
+- `relogin`：扫码用户（password 为 `None`）无法自动重登 → 发 `UserReloginRequiredEvent` 并抛 510。`GET /api/auth/me` 还会返回 `ics_url_count`。
+
+### platform
+
+- 抽象基类 `service/platform/base/__init__.py:Platform`，`__init_subclass__` 自动注册；子类必须定义 `name` 和 `auth_method`（否则 `SyntaxError`）。新增平台 = 写子类 + 在 `platform/__init__.py` import。
+- 学习通 = 账号密码（`AuthMethod.PASSWORD`，自写 `encryptByAES`，key 硬编码）；学在重邮 / 雨课堂复用统一认证（`AuthMethod.CQUPT_IDS` → `base/utils.login_with_ddl_account`，cookie 失效时自动 `auth.relogin` 重试一次）。雨课堂登录后要**重排 `sessionid` cookie** 才能跨两个 yuketang 域共享。
+- `fetch_homework()`：未绑定 → 428；冷却中 → 429（`check_cooldown=False` 可跳过）；最多 `homework_refresh_attempts`（默认 3）次，**只对 `httpx.TimeoutException` 重试**（固定 1s），cookie 失效则 relogin 后重发；用尽后**原样抛最后一次异常** —— 别把超时吞成空列表，那会让刷新静默失败。
+- 解析失败**不要抛异常**：学习通对未知收件箱用 `...chaoxing:unknown-inbox` logger 记录并 `continue`（非 DEBUG 下该 logger 被禁用）。
+
+### homework
+
+- 刷新**只新增，不删除**（删除逻辑被注释掉了）。`done` 是本地状态，不是平台状态（只有 meetschedule PULL 回写）。
+- `homework_cache_base_ttl`(+jitter) 是**自动刷新间隔**，不是读缓存 TTL（查询直接读库）；手动刷新冷却 `homework_cooldown_ttl`。
+- `get_last_refresh_time` 用多平台 `max()`（代码里标了 `XXX` 争议）。多平台刷新时 `router/api/homework.py` 把异常转成给用户看的提示列表，未知异常带 uuid 错误码。
+
+### qqpush
+
+- **现役是 `push.py`**（qqchan `/qqchan/send`，默认纯文本），只有它被 import；`push_wild.py` / `push_official.py` 是同源死代码（零引用），改推送只改 `push.py`。
+- 后端 → 机器人用 `QQBOT_RECV_API_KEY`，机器人 → 后端用 `QQBOT_SEND_API_KEY`（`X-API-Key`，`middleware/qqpush.verify_api_key`）。命名与 qqbot 端一致，**不对称是故意的**。
+- `ScheduledStrategy`（cron 推 scope 小时内截止的）与 `RealtimeStrategy`（每作业一个 job，`deadline - scope` 触发）；实时推送进 `buffer`（`asyncio.Lock`），由 5 秒间隔的 `push_buffered_homeworks` 合并发送。未绑定 `qqchan_id` 静默跳过；返回 `"无此id"` → 抛 `QQChanIDNotExist` → 清空绑定并 emit `QQPushConfigChangedEvent`。
+
+### meetschedule（最复杂，核心 `refresh_task.py` 约 600 行）
+
+- `_job` 每 `meetschedule_sync_interval` 秒一次，固定顺序 **PUSH → UPDATE → DELETE → PULL**；阶段内按 user 分组，每组一个 client。
+- 远程结果只分 `OK / MISSING / PERMANENT / TRANSIENT`，本地动作**只由真值表 `_transition(phase, result)` 决定**。改同步规则改这里，别在阶段中间删数据。
+- 无重试计数 / 退避：TRANSIENT 保持状态等下轮；PERMANENT(422/409) 与"作业不存在 / 无 deadline"直接删跟踪。401/403 → 用户进 `to_unbind`，四阶段跑完才统一解绑（删全部条目 + `MeetscheduleConfig`）。
 - 快照分区必须在改任何状态之前完成；`_job` 中途不 commit。
+- 绑定要校验 key 权限（`SCHEDULE_READ + ENTITIES_READ + ENTITIES_WRITE`，不足 403）且课程表已存在，之后把当前全部作业写成 entry。批量 100，push 必须 `allow_duplicate_title=True`，`create_batch` 返回数量与请求不符 → 整批 TRANSIENT（防重复创建）。
+- 限流 `limiter.acquire`：60 次/分钟，FIXED_WINDOW + MemoryStore，**进程内**（多 worker 不共享）；key 取 SDK 私有属性 `meet._client.headers["X-API-Key"]`（**SDK 一改就炸**）。
 
-### ics（ICS 日历订阅）
-- 库用 `icalendar`（依赖里带 `tzdata`，alpine 没有系统时区库也能用 `ZoneInfo("Asia/Shanghai")`）。
-- **请求时即时渲染**：没有后台任务、没有缓存、**没有 bus 事件处理器**。`ETag = sha256(渲染结果)`，只认 `If-None-Match`（不发 `Last-Modified`，没有可靠的"内容变更时间"）→ 新作业、完成、解绑删作业、`ics_past_days` 自然过期这些变化天然生效，不用去接事件。
-- 所以渲染**必须是纯函数**：`DTSTAMP` 取 `IcsSubscription.created_at`（常量）、`VTIMEZONE` 用固定日期范围生成、查询 `order_by(deadline, id)`。任何一处用 `now()` 都会让 ETag 抖动、304 失效。
-- 事件刻意**不输出 `SEQUENCE`/`LAST-MODIFIED`**：当前刷新只增不改既有作业，每个 UID 的内容不可变。将来若开始更新已有作业字段，必须补这两个属性（要给 `Homework` 加 `updated_at` + 手写迁移），否则客户端不会刷新旧事件。
-- 只订阅 `done == False` 且有 `deadline` 的作业，并保留最近 `ics_past_days` 天内已截止的；作业完成后从 feed 消失，日历客户端会自行删除该事件。
-- 鉴权靠 URL 里的 token（日历客户端发不了 cookie），`/api/ics/feed/{token}.ics` 不校验登录，token 无效一律 404（不区分"不存在"与"已撤销"）。
-- **多个订阅**：`GET /api/ics/subscription` 返回当前用户全部订阅的数组（`id`/`created_at`/`fetch_count`/`last_fetched_at`，**不含token**），`POST` 每次新建一条（不去重，响应多一个 `token` 字段，是明文token**唯一一次**出现的机会），`DELETE /api/ics/subscription/{id}` 删指定一条（非本人或不存在 → 404）。前端用 `id` 区分订阅，用创建时拿到的 token 拼 `/api/ics/feed/{token}.ics`；**后端不返回完整 url**（所以没有 `public_base_url` 配置）。
-- token 按密码对待：库里只存 `sha256(token)`（`ics.hash_token`，响应模型 `IcsSubscriptionCreatedSchema` 才带 token）。用**普通 sha256 + 唯一索引**即可，**不要换 bcrypt/argon2**——那是为抗低熵口令设计的，对256位随机token没有意义，只会拖慢每次 feed 请求。token 丢了就删掉重建（刻意不做掩码+尾4位：随机串的尾4位没有信息量）。
-- 拉取统计：feed 每次渲染成功后原子自增 `fetch_count` 并刷新 `last_fetched_at`（304 也算一次拉取）。**统计字段绝不能进渲染结果**，否则 ETag 每次都变、304 失效（`_record_fetch` 用 `UPDATE ... SET fetch_count = fetch_count + 1` 避免并发丢更新）。
-- 订阅表靠 `create_all` 建；删账号靠数据库外键 CASCADE（生产 MariaDB 生效；本地 sqlite 默认不启用外键，会留孤儿行）。
-- ⚠️ 从"一人一条"改成多订阅时主键由 `user_id` 变成 `id`，而 `create_all` 永不 ALTER：**旧库必须人工迁移**（`DROP TABLE icssubscription` 后由 `create_all` 重建），代码里不做自动迁移。表里只有 token 的哈希，重建后让用户重新生成即可。
-- 配置：`ics_timezone`、`ics_event_duration_minutes`、`ics_past_days`。
+### ics（日历订阅）
 
-## 6. 本地开发与验证
+- **请求时即时渲染**：无后台任务、无缓存、**无 bus handler**。`feed.py` 的 `build_calendar`/`render_ics` 必须是**纯函数**（`DTSTAMP` 取 `subscription.created_at`、VTIMEZONE 固定 1970–2038、查询 `order_by(deadline, id)`）—— `ETag = sha256(body)[:32]`，掺进 `now()` 就会抖动、304 失效。
+- 只认 `If-None-Match`（不发 `Last-Modified`），刻意**不输出 `SEQUENCE`/`LAST-MODIFIED`**：现在刷新只增不改既有作业，UID 内容不可变；将来要更新旧作业字段，得给 `Homework` 加 `updated_at` + 迁移再补这两个属性，否则客户端不会刷新旧事件。
+- 只收 `done == False` 且有 `deadline` 的作业，保留最近 `ics_past_days` 天内已截止的；完成后从 feed 消失，客户端自会删事件。`GET /api/ics/feed/{token}.ics` 不校验登录（日历客户端发不了 cookie），token 无效一律 404（不区分"不存在"与"已撤销"）。
+- 多订阅：`GET`/`POST /api/ics/subscription`（POST 每次新建不去重，响应带明文 `token`，**只此一次**）、`DELETE /api/ics/subscription/{id}`（非本人或不存在 404）；前端用 `id` 区分并自己拼 feed URL，后端不返回完整 url。库里只存 `sha256(token)`，**别换 bcrypt/argon2**（对 256 位随机 token 没意义，只会拖慢 feed），丢了就删掉重建。
+- 拉取统计：渲染成功后 `_record_fetch` 原子自增 `fetch_count` 并刷新 `last_fetched_at`（304 也算）。**统计字段绝不能进渲染结果**，否则 ETag 每次都变。配置：`ics_timezone`、`ics_event_duration_minutes`、`ics_past_days`。
+- ⚠️ 订阅表由 `create_all` 建；从"一人一条"改成多订阅时主键 `user_id` → `id`，`create_all` 不 ALTER：**旧库要人工 `DROP TABLE icssubscription` 重建**，再让用户重新生成。
 
-```bash
-uv sync                 # 安装依赖
-uv run cquptddl         # 启动（DEBUG=true 时 reload + 只监听 127.0.0.1）
-```
-- 配置全部来自 `.env`（`pydantic-settings`，`extra="ignore"`，字段名大小写不敏感）。**必需**：`DATABASE_URL`、`SECRET_KEY`、`QQBOT_URL`、`QQBOT_RECV_API_KEY`、`QQBOT_SEND_API_KEY`。常用可调项见 `core/config.py`。`.env` 已被 gitignore，仓库里没有 `.env.example`。
-- 本地用 `sqlite+aiosqlite:///./test.db`（仓库根有 `test.db`，首次导入 `config` 时就会实例化 Settings）。
-- **建表方式只有 `SQLModel.metadata.create_all`**（`core/db.py:_migrate_db`）：只建缺失的表，**永不 ALTER**。改字段/类型必须自己写迁移或重建库（人工执行，不要在 `_migrate_db` 里加自动迁移）。
-- 验证手段：`uv run python -c "import cquptddl"` 能捕获大部分 import/符号注册错误；`/docs` 看路由。**注意 `import cquptddl` 会读取 `.env` 并连库**。
+## 7. 约定
 
-## 7. 提交前必须跑 ty + ruff（全局安装）
-
-**改动任何 `.py` 后，提交前必须跑这两条并在项目根目录执行**（`ty`/`ruff` 是全局命令，不在 `.venv` 里，也**不在** `pyproject.toml` 里配置 —— 用工具默认规则）：
-
-```bash
-ty check          # 类型检查
-ruff check .      # lint
-ruff format --check .   # 格式（如需修复用 ruff format .）
-```
-
-- 已验证的**基线**：`ty check`、`ruff check .` 均 **All checks passed**，`ruff format --check .` 输出 **82 files already formatted**。**格式全部合规，不要跑 `ruff format .` 大范围改写**（要修就只 `ruff format <单个文件>`）。
-- 工具版本（2025-09 时点）：`ty 0.0.81`、`ruff 0.16.8`。`ruff` 默认规则集下 `T100`（`breakpoint`）会报错，F401 等也会。
-- `ty check` 必须在**仓库根**跑：放别处会因找不到 `pyproject.toml`/`.venv` 而无法解析依赖，产生大量假报错。
-- 未配置 ruff/ty 的 `[tool.*]` 段，也没有 `ruff.toml`/`ty.toml`；`.ruff_cache` 已被 gitignore。
-- 行内抑制用 `# ty: ignore[规则名]`（不需要 `# type: ignore`）；ruff 用 `# noqa: 规则名`。
-- **SQLModel/SQLAlchemy 表达式会让 `ty` 误报**：`select(<Model>).where(<列> == <值>)` 常被判成 `invalid-argument-type`（`<列> == <值>` 静态上返回 `bool`）。仓库既有代码就是直接挂 `# ty: ignore[invalid-argument-type]`，照做即可；`select(Model.id)` / `select(func.count())` 这类单列表述式通常不需要。
-- 文件系统只读的会话里 `ruff` 会因写不了 `.ruff_cache` 而失败，此时加 `--no-cache`。
-
-## 8. 代码约定与坑（照做能省很多 token）
-
-- 注释、日志、异常 detail 全是**中文**；提交信息是 Conventional Commits（`feat(scope):` / `fix(scope):` / `style` / `chore`）。
-- 每个模块顶部 `_logger = getLogger(__name__)` 并显式 `setLevel`（根 logger 是 WARNING，不设就看不到日志）。
-- 业务异常一律加进 `exc.py`（继承 `CquptddlException`，用类属性写 `status`/`detail`）；抛未知异常前先记日志并给用户一个 uuid 错误码。
-- `session.get_one()` 会抛 `NoResultFound`；"可能不存在"用 `session.get()` 并判 `None`。
-- 路由函数名大量重复用 `_`（依赖 FastAPI 只看装饰器）；路由前缀在 `router/api/__init__.py`，全部挂 `/api` 下。
-- 类型检查器是 `ty`，不是 mypy（见 §7 的检查命令）。
-- **不要在生产路径上留 `breakpoint()`**：`ruff` 报 `T100`，而且它会直接卡死对应的后台刷新任务。
-- **不要 `_logger.debug(<整个响应体>)`**：平台响应动辄几十 KB（学习通一条通知就是），排障完立刻删；要留痕就记条数或长度。
+- 注释、日志、异常 detail 全是**中文**；提交信息 Conventional Commits（`feat(scope):` / `fix(scope):` / …）。
+- 测试用 pytest，`tests/` 有 6 个文件（ics feed / 订阅 / 强制缓存 / url 计数 / 平台冷却 / version）；dev 依赖里 `respx` 零引用。
+- 每个模块 `_logger = getLogger(__name__)` 并显式 `setLevel`（根 logger 是 WARNING，不设看不到日志）。
+- 业务异常一律加进 `exc.py`（继承 `CquptddlException`，类属性写 `status`/`detail`）；抛未知异常前先记日志并给用户 uuid 错误码。
+- `session.get_one()` 会抛 `NoResultFound`；"可能不存在"用 `session.get()` 并判 `None`。路由函数名大量重复用 `_`（FastAPI 只看装饰器）。
+- **不要留 `breakpoint()`**（ruff `T100`，还会卡死对应后台任务）；**不要 `_logger.debug(整个响应体)`**（平台响应动辄几十 KB），要留痕只记条数或长度。
