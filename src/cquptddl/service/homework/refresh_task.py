@@ -64,7 +64,7 @@ async def _job(uid: str, platform_name: PlatformEnum):
         async with core.factory.get_session() as session:
             user = await session.get_one(User, uid)
             await refresh_homework(session, user, platform_name)
-            _logger.info("用户%s在平台%s的作业自动刷新成功", uid, platform_name)
+            _logger.debug("用户%s在平台%s的作业自动刷新成功", uid, platform_name)
     except RefreshCoolingDown:
         _logger.warning("用户%s自动刷新平台%s时还在冷却中", uid, platform_name)
     except Exception as e:
