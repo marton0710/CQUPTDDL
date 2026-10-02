@@ -12,7 +12,6 @@ from cquptddl.exc import (
     InvalidPlatformCredentialFormat,
 )
 from cquptddl.model.db import PlatformInfo, User
-from cquptddl.model.event import PlatformBoundEvent, PlatformUnboundEvent
 from cquptddl.model.schema.platform import AllAuthInputs, AuthMethod, PlatformEnum
 
 from .base import Platform
@@ -64,14 +63,18 @@ async def bind(
             last_refreshed_homework=datetime.fromtimestamp(0).astimezone(),
         )
     )
-    core.bus.emit(PlatformBoundEvent(uid=user.id, platform_name=platform_name))
+    await core.hook.trigger(
+        "platform.after_bind", user_id=user.id, platform_name=platform_name
+    )
 
 
 async def unbind(session: AsyncSession, uid: str, platform_name: PlatformEnum):
     platform_info = await session.get(PlatformInfo, (uid, platform_name))
     if platform_info is not None:
         await session.delete(platform_info)
-    core.bus.emit(PlatformUnboundEvent(uid=uid, platform_name=platform_name))
+    await core.hook.trigger(
+        "platform.after_unbind", user_id=uid, platform_name=platform_name
+    )
 
 
 async def relogin(

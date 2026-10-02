@@ -5,7 +5,6 @@ from sqlmodel import select
 
 from cquptddl import core
 from cquptddl.model.db import Homework, User
-from cquptddl.model.event import HomeworkRefreshedEvent
 from cquptddl.model.schema.platform import PlatformEnum
 
 
@@ -47,8 +46,9 @@ async def refresh_homework(
     #     delete(Homework).where(Homework.id.in_(stored_homework_ids))  # ty: ignore[unresolved-attribute, unused-ignore-comment]
     # )
     await session.commit()
-    core.bus.emit(
-        HomeworkRefreshedEvent(
-            uid=user.id, platform_name=platform_name, new_homework_ids=new_homework_ids
-        )
+    await core.hook.trigger(
+        "homework.after_refresh",
+        user_id=user.id,
+        platform_name=platform_name,
+        new_homework_ids=new_homework_ids,
     )

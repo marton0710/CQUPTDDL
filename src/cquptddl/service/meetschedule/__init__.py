@@ -7,7 +7,6 @@ from .refresh_task import start_refresh
 
 
 def init():
-    core.hook.register("auth.before_delete_user", event_handlers.on_delete_user)
     start_refresh()
 
 

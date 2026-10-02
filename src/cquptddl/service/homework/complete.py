@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cquptddl import core
 from cquptddl.exc import NoSuchHomework
 from cquptddl.model.db import Homework
-from cquptddl.model.event import HomeworkDoneEvent
 
 _logger = getLogger(__name__)
 _logger.setLevel(INFO)
@@ -23,4 +22,4 @@ async def complete_homework(
         raise NoSuchHomework
     homework.done = is_complete
     await session.commit()
-    core.bus.emit(HomeworkDoneEvent(homework_id=homework_id))
+    await core.hook.trigger("homework.after_done", homework_id=homework_id)

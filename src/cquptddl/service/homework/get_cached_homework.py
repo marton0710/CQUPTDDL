@@ -9,7 +9,6 @@ from cquptddl import core
 from cquptddl.model.db import Homework
 from cquptddl.model.db.platform_info import PlatformInfo
 from cquptddl.model.db.qqpush_config import QQPushConfig
-from cquptddl.model.event import PlatformUnboundEvent
 from cquptddl.model.schema.platform import PlatformEnum
 
 
@@ -53,9 +52,12 @@ async def get_last_refresh_time(
     return resp.scalar_one() or datetime.fromtimestamp(0).astimezone()
 
 
-async def delete_platform_homework_event_callback(e: PlatformUnboundEvent):
+@core.hook.on("platform.after_unbind", background=True)
+async def delete_platform_homework_event_callback(
+    user_id: str, platform_name: PlatformEnum
+):
     async with core.factory.get_session() as session:
-        await delete_platform_homework(session, e.uid, e.platform_name)
+        await delete_platform_homework(session, user_id, platform_name)
 
 
 async def delete_platform_homework(
@@ -100,6 +102,3 @@ async def get_user_homeworks_with_deadline(
     )
     resp = await session.execute(sql)
     return resp.scalars().all()
-
-
-core.bus.on(PlatformUnboundEvent, delete_platform_homework_event_callback)

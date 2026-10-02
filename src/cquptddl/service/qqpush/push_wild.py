@@ -12,8 +12,6 @@ from cquptddl.model.db import Homework
 from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.event import (
     AutoRefreshHomeworkFailedEvent,
-    HomeworkRefreshedEvent,
-    QQPushConfigChangedEvent,
     UserReloginRequiredEvent,
 )
 from cquptddl.model.schema.platform import PlatformEnum
@@ -90,12 +88,13 @@ async def push_buffered_homeworks():
         buffer.clear()
 
 
-async def push_new_homeworks(user_id: str, homework_ids: Collection[UUID]):
-    if not homework_ids:
+@core.hook.on("homework.after_refresh", background=True)
+async def push_new_homeworks(user_id: str, new_homework_ids: Collection[UUID], **_):
+    if not new_homework_ids:
         return
 
     async with core.factory.get_session() as session:
-        sql = select(Homework).where(Homework.id.in_(homework_ids))  # ty: ignore[unresolved-attribute]
+        sql = select(Homework).where(Homework.id.in_(new_homework_ids))  # ty: ignore[unresolved-attribute]
         resp = await session.execute(sql)
         homeworks = resp.scalars().all()
 
@@ -164,6 +163,9 @@ async def _unbind(qqpush_config: QQPushConfig):
     qqpush_config.qqchan_id = None
     async with core.factory.get_session() as session:
         await session.merge(qqpush_config)
+        await core.hook.trigger(
+            "qqpush.after_config_change", user_id=qqpush_config.user_id
+        )
     _logger.info("已解绑用户%s的qqchan_id", qqpush_config.user_id)
 
 
@@ -183,7 +185,6 @@ async def _push_or_unbind(
             qqpush_config.qqchan_id,
         )
         await _unbind(qqpush_config)
-        core.bus.emit(QQPushConfigChangedEvent(uid=qqpush_config.user_id))
 
 
 core.bus.on(
@@ -191,6 +192,3 @@ core.bus.on(
     lambda e: push_refresh_homework_failed_notice(e.uid, e.platform_name),
 )
 core.bus.on(UserReloginRequiredEvent, lambda e: push_relogin_required_msg(e.uid))
-core.bus.on(
-    HomeworkRefreshedEvent, lambda e: push_new_homeworks(e.uid, e.new_homework_ids)
-)

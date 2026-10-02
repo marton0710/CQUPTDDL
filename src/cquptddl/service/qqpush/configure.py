@@ -2,10 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
 from cquptddl.model.db.qqpush_config import QQPushConfig
-from cquptddl.model.event import (
-    QQPushConfigChangedEvent,
-    UserRegisterEvent,
-)
 from cquptddl.model.schema.qqpush import QQPushConfigSchema
 
 from .push import push_bind_success_msg
@@ -18,7 +14,7 @@ async def configure_qqpush(
         await push_bind_success_msg(model.qqchan_id)
     await session.merge(QQPushConfig(user_id=user_id, **model.model_dump()))
     await session.commit()
-    core.bus.emit(QQPushConfigChangedEvent(uid=user_id))
+    await core.hook.trigger("qqpush.after_config_change", user_id=user_id)
 
 
 async def get_configure(session: AsyncSession, user_id: str) -> QQPushConfigSchema:
@@ -31,9 +27,7 @@ async def get_configure(session: AsyncSession, user_id: str) -> QQPushConfigSche
     )
 
 
-async def _generate_qqpush_config_after_register(event: UserRegisterEvent):
+@core.hook.on("auth.after_register", background=True)
+async def _generate_qqpush_config_after_register(uid: str):
     async with core.factory.get_session() as session:
-        session.add(QQPushConfig(user_id=event.uid))
-
-
-core.bus.on(UserRegisterEvent, _generate_qqpush_config_after_register)
+        session.add(QQPushConfig(user_id=uid))

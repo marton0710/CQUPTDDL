@@ -4,11 +4,6 @@ from sqlmodel import select
 
 from cquptddl import core
 from cquptddl.model.db.qqpush_config import QQPushConfig
-from cquptddl.model.event import (
-    AccountDeletedEvent,
-    HomeworkRefreshedEvent,
-    QQPushConfigChangedEvent,
-)
 
 from .globals import scheduler, user_strategies
 from .push import push_buffered_homeworks
@@ -48,19 +43,17 @@ def unbind(user_id: str):
         old.clear()
 
 
-async def _refresh_user(e: QQPushConfigChangedEvent | HomeworkRefreshedEvent):
+@core.hook.on("homework.after_refresh", background=True)
+@core.hook.on("qqpush.after_config_change", background=True)
+async def _refresh_user(user_id: str, **_):
     async with core.factory.get_session() as session:
-        user_config = await session.get_one(QQPushConfig, e.uid)
+        user_config = await session.get_one(QQPushConfig, user_id)
         if user_config.qqchan_id is None:  # 解绑情况
             unbind(user_config.user_id)
         else:
             await _init_user(user_config)
 
 
-def _handle_account_delete_event(e: AccountDeletedEvent):
-    unbind(e.uid)
-
-
-core.bus.on(QQPushConfigChangedEvent, _refresh_user)
-core.bus.on(HomeworkRefreshedEvent, _refresh_user)
-core.bus.on(AccountDeletedEvent, _handle_account_delete_event)
+@core.hook.on("auth.after_delete_user", background=True)
+def _handle_account_delete_event(user_id: str):
+    unbind(user_id)

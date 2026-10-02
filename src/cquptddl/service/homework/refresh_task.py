@@ -8,10 +8,7 @@ from cquptddl import core
 from cquptddl.exc import CquptddlException, RefreshCoolingDown
 from cquptddl.model.db import PlatformInfo, User
 from cquptddl.model.event import (
-    AccountDeletedEvent,
     AutoRefreshHomeworkFailedEvent,
-    PlatformBoundEvent,
-    PlatformUnboundEvent,
 )
 from cquptddl.model.schema.platform import PlatformEnum
 
@@ -29,7 +26,7 @@ async def init_refresh_task():
         resp = await session.execute(stmt)
         items = resp.scalars().all()
         for i in items:
-            add_job(i.user_id, i.platform)
+            await add_job(i.user_id, i.platform)
         _logger.info("后台刷新任务初始化完成，共添加%s个任务", len(items))
 
 
@@ -37,26 +34,28 @@ def _generate_job_id(uid: str, platform_name: str) -> str:
     return f"homework_fetch_schedule_{uid}_{platform_name}"
 
 
-def add_job(uid: str, platform_name: PlatformEnum):
+@core.hook.on("platform.after_bind", background=True)
+async def add_job(user_id: str, platform_name: PlatformEnum):
     job = scheduler.add_job(
         _job,
         "interval",
-        args=(uid, platform_name),
-        id=_generate_job_id(uid, platform_name),
+        args=(user_id, platform_name),
+        id=_generate_job_id(user_id, platform_name),
         seconds=core.config.homework_cache_base_ttl,
         jitter=core.config.homework_cache_jitter,
         replace_existing=True,
     )
-    _logger.debug("添加任务：用户%s，平台%s，任务%s", uid, platform_name, job)
+    _logger.debug("添加任务：用户%s，平台%s，任务%s", user_id, platform_name, job)
 
 
-def del_job(uid: str, platform_name: PlatformEnum):
-    _logger.debug("删除任务：用户%s，平台%s", uid, platform_name)
+@core.hook.on("platform.after_unbind", background=True)
+async def del_job(user_id: str, platform_name: PlatformEnum):
+    _logger.debug("删除任务：用户%s，平台%s", user_id, platform_name)
     try:
-        scheduler.remove_job(_generate_job_id(uid, platform_name))
+        scheduler.remove_job(_generate_job_id(user_id, platform_name))
     except JobLookupError as e:
         _logger.warning(
-            "移除任务时未找到：用户：%s，平台：%s", uid, platform_name, exc_info=e
+            "移除任务时未找到：用户：%s，平台：%s", user_id, platform_name, exc_info=e
         )
 
 
@@ -82,14 +81,10 @@ async def _job(uid: str, platform_name: PlatformEnum):
         )
 
 
-async def _on_delete_user(event: AccountDeletedEvent):
+@core.hook.on("auth.after_delete_user", background=True)
+async def _on_delete_user(user_id: str):
     for platform in PlatformEnum:
         try:
-            scheduler.remove_job(_generate_job_id(event.uid, platform))
+            scheduler.remove_job(_generate_job_id(user_id, platform))
         except JobLookupError:
             pass
-
-
-core.bus.on(PlatformBoundEvent, lambda e: add_job(e.uid, e.platform_name))
-core.bus.on(PlatformUnboundEvent, lambda e: del_job(e.uid, e.platform_name))
-core.bus.on(AccountDeletedEvent, _on_delete_user)

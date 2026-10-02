@@ -7,9 +7,6 @@ from cquptddl import core
 from cquptddl.exc import UserReloginRequired
 from cquptddl.model.db.user import User
 from cquptddl.model.event import (
-    AccountDeletedEvent,
-    UserLoginEvent,
-    UserRegisterEvent,
     UserReloginRequiredEvent,
 )
 
@@ -43,13 +40,13 @@ async def password_login(
             token_version=uuid.uuid7(),
         )
         session.add(user)
-        core.bus.emit(UserRegisterEvent(uid=uid))
+        await core.hook.trigger("auth.after_register", uid)
     else:
         user = old_user
         user.password = encrypted_password
         user.ids_cookie = cookies
 
-    core.bus.emit(UserLoginEvent(uid=uid))
+    await core.hook.trigger("auth.after_login", uid)
     _logger.info("用户%s已通过密码登录", uid)
     return (
         crypto.generate_token(uid, user.token_version, False),
@@ -90,14 +87,14 @@ async def qrcode_login(
             token_version=uuid.uuid7(),
         )
         session.add(user)
-        core.bus.emit(UserRegisterEvent(uid=uid))
+        await core.hook.trigger("auth.after_register", uid)
     else:
         user = old_user
         if clear_password:
             user.password = None
         user.ids_cookie = cookies
 
-    core.bus.emit(UserLoginEvent(uid=uid))
+    await core.hook.trigger("auth.after_login", uid)
     _logger.info("用户%s已通过二维码登录", uid)
     return (
         crypto.generate_token(uid, user.token_version, False),
@@ -141,5 +138,5 @@ async def logout(user: User):
 async def delete_account(session: AsyncSession, user: User):
     await core.hook.trigger("auth.before_delete_user", session, user)
     await session.delete(user)
-    core.bus.emit(AccountDeletedEvent(uid=user.id))
+    await core.hook.trigger("auth.after_delete_user", user_id=user.id)
     _logger.info("用户%s已删除账户", user.id)
