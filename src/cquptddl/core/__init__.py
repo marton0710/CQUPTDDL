@@ -3,6 +3,7 @@ from logging import INFO, getLogger
 
 from . import db, task
 from . import factory as factory
+from . import hook as hook
 from . import symbol as symbol
 from .config import config as config
 from .event_bus import bus as bus

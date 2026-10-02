@@ -1,6 +1,4 @@
 import uuid
-from asyncio import CancelledError
-from collections.abc import Awaitable, Callable
 from logging import INFO, getLogger
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +17,6 @@ from . import crypto, ids
 
 _logger = getLogger(__name__)
 _logger.setLevel(INFO)
-_before_delete_user = list[Callable[[AsyncSession, User], Awaitable[None]]]()
 
 
 async def password_login(
@@ -141,21 +138,8 @@ async def logout(user: User):
     user.token_version = uuid.uuid7()
 
 
-def before_delete_user_hook(
-    f: Callable[[AsyncSession, User], Awaitable[None]], index: int = 99
-):
-    _before_delete_user.insert(index, f)
-
-
 async def delete_account(session: AsyncSession, user: User):
-    for f in _before_delete_user:
-        try:
-            await f(session, user)
-        except CancelledError:
-            raise
-        except Exception as e:
-            _logger.warning("注销用户%s前的钩子发生异常", user.id, exc_info=e)
-            continue
+    await core.hook.trigger("auth.before_delete_user", session, user)
     await session.delete(user)
     core.bus.emit(AccountDeletedEvent(uid=user.id))
     _logger.info("用户%s已删除账户", user.id)

@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Any
 
-_symbol_table: dict[str, Callable] = {}
+_symbol_table = dict[str, Callable]()
 
 
 def export(name: str, func: Callable):
