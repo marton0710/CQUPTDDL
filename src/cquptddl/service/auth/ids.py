@@ -43,6 +43,7 @@ async def password_login(
             if "captcha" in e.keys:
                 raise LoginFailed("请手动登录一次统一认证平台以去除验证码")
         except Exception as e:
+            _logger.error("密码登录时发生异常", exc_info=e)
             raise LoginFailed("无法登录你的账号") from e
 
         try:

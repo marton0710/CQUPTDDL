@@ -38,6 +38,7 @@ _needed_meetschedule_key_permissions = {
 }
 
 
+@core.symbol.meetschedule_bind.register
 async def bind(session: AsyncSession, user_id: str, key: str):
     """绑定Meet课程表
     Raises:
@@ -106,6 +107,7 @@ async def bind(session: AsyncSession, user_id: str, key: str):
     await add_new_homeworks_by_homework_ids(session, ids_with_uid)
 
 
+@core.symbol.meetschedule_unbind.register
 async def unbind(session: AsyncSession, user_id: str):
     # 获取绑定信息
     config = await session.get(MeetscheduleConfig, user_id)
@@ -130,6 +132,7 @@ async def unbind(session: AsyncSession, user_id: str):
     await session.execute(sql)
 
 
+@core.symbol.meetschedule_is_bound.register
 async def is_bound(session: AsyncSession, user_id: str) -> bool:
     return await session.get(MeetscheduleConfig, user_id) is not None
 

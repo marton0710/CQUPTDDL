@@ -1,13 +1,2 @@
-from cquptddl import core
-
-from . import globals, on_boot  # noqa: F401
-from .configure import configure_qqpush, get_configure
-from .db import get_user_config_from_qqchan_id
-from .push import push_dying_homeworks
-
-core.symbol.export("qqpush.configure", configure_qqpush)
-core.symbol.export(
-    "qqpush.get_user_config_from_qqchan_id", get_user_config_from_qqchan_id
-)
-core.symbol.export("qqpush.push_dying_homeworks", push_dying_homeworks)
-core.symbol.export("qqpush.get_configure", get_configure)
+from . import configure, db, on_boot  # noqa: F401
+from . import globals as globals

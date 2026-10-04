@@ -20,10 +20,12 @@ _logger = getLogger(__name__)
 _logger.setLevel(INFO)
 
 
+@core.symbol.platform_get_auth_method.register
 def get_auth_method(platform_name: PlatformEnum) -> AuthMethod:
     return Platform.get_platform_by_name(platform_name).auth_method
 
 
+@core.symbol.platform_bind.register
 async def bind(
     user: User,
     session: AsyncSession,
@@ -51,9 +53,7 @@ async def bind(
             )
             raise BindPlatformFailed(f"绑定平台失败，错误码：{errno}") from e
 
-    credentials_to_save = core.symbol.call(
-        "crypto.aes_encrypt", credentials.model_dump_json()
-    )
+    credentials_to_save = core.symbol.crypto_aes_encrypt(credentials.model_dump_json())
     await session.merge(
         PlatformInfo(
             user_id=user.id,
@@ -68,6 +68,7 @@ async def bind(
     )
 
 
+@core.symbol.platform_unbind.register
 async def unbind(session: AsyncSession, uid: str, platform_name: PlatformEnum):
     platform_info = await session.get(PlatformInfo, (uid, platform_name))
     if platform_info is not None:
@@ -87,7 +88,7 @@ async def relogin(
     platform_info = await session.get_one(PlatformInfo, (user.id, platform_name))
     platform = Platform.get_platform_by_name(platform_name)
     credentials = AuthMethod(platform.auth_method).model_class.model_validate_json(
-        core.symbol.call("crypto.aes_decrypt", platform_info.credentials)
+        core.symbol.crypto_aes_decrypt(platform_info.credentials)
     )
     async with core.factory.get_client() as client:
         new_cookies = await platform.login(client, user, credentials)
@@ -95,6 +96,7 @@ async def relogin(
     return new_cookies
 
 
+@core.symbol.platform_valid_cookie.register
 async def valid_cookie(
     session: AsyncSession, user_id: str, platform_name: PlatformEnum
 ) -> bool | None:

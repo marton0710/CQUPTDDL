@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.get("/{platform_name}/auth_method")
 async def _(platform_name: PlatformEnum) -> AuthMethod:
-    return core.symbol.call("platform.get_auth_method", platform_name)
+    return core.symbol.platform_get_auth_method(platform_name)
 
 
 @router.post("/{platform_name}/bind", status_code=204)
@@ -20,7 +20,7 @@ async def _(
     platform_name: PlatformEnum,
     credentials: AllAuthInputs,
 ):
-    await core.symbol.call("platform.bind", user, session, platform_name, credentials)
+    await core.symbol.platform_bind(user, session, platform_name, credentials)
 
 
 @router.post("/{platform_name}/unbind", status_code=204)
@@ -29,7 +29,7 @@ async def _(
     session: SessionDep,
     platform_name: PlatformEnum,
 ):
-    return await core.symbol.call("platform.unbind", session, user.id, platform_name)
+    await core.symbol.platform_unbind(session, user.id, platform_name)
 
 
 @router.get("/{platform_name}/valid_cookie")
@@ -38,6 +38,4 @@ async def _(
     session: SessionDep,
     platform_name: PlatformEnum,
 ) -> bool | None:
-    return await core.symbol.call(
-        "platform.valid_cookie", session, user.id, platform_name
-    )
+    return await core.symbol.platform_valid_cookie(session, user.id, platform_name)

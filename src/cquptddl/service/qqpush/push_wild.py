@@ -49,6 +49,7 @@ async def push_dying_homework(homework: Homework):
         buffer.setdefault(homework.user_id, []).append(homework)
 
 
+@core.symbol.qqpush_push_dying_homeworks.register
 async def push_dying_homeworks(user_id: str, homeworks: Collection[Homework]):
     c = await _get_user_qqpush_config(user_id)
     if not homeworks:

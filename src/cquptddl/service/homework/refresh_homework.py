@@ -8,6 +8,7 @@ from cquptddl.model.db import Homework, User
 from cquptddl.model.schema.platform import PlatformEnum
 
 
+@core.symbol.homework_refresh_homework.register
 async def refresh_homework(
     session: AsyncSession, user: User, platform_name: PlatformEnum
 ):
@@ -19,7 +20,7 @@ async def refresh_homework(
 
     # 获取所有作业
     homeworks = list[Homework](
-        await core.symbol.call("platform.fetch_homework", session, user, platform_name)
+        await core.symbol.platform_fetch_homework(session, user, platform_name)  # ty: ignore[missing-argument]
     )
 
     # 落库并找出新增的作业id

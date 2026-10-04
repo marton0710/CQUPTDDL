@@ -1,5 +1,4 @@
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Cookie
 from fastapi.responses import Response
@@ -22,10 +21,9 @@ router = APIRouter()
 
 @router.post("/login")
 async def _(model: LoginInput, session: SessionDep, resp: Response) -> LoginOutput:
-    _result: tuple[str, str, str] = await core.symbol.call(
-        "auth.password_login", session, model.username, model.password
+    access_token, refresh_token, name = await core.symbol.auth_password_login(
+        session, model.username, model.password
     )
-    access_token, refresh_token, name = _result
 
     resp.set_cookie(
         "token",
@@ -48,8 +46,7 @@ async def _(model: LoginInput, session: SessionDep, resp: Response) -> LoginOutp
 @router.get("/qrcode_login")
 async def _() -> GetLoginQRCodeOutput:
     """获取登录二维码"""
-    r: tuple[str, UUID] = await core.symbol.call("auth.get_login_qrcode")
-    qrcode_url, session_id = r
+    qrcode_url, session_id = await core.symbol.auth_get_login_qrcode()
     return GetLoginQRCodeOutput(qrcode_url=qrcode_url, session_id=session_id)
 
 
@@ -57,10 +54,9 @@ async def _() -> GetLoginQRCodeOutput:
 async def _(
     session: SessionDep, model: QRCodeLoginInput, resp: Response
 ) -> LoginOutput:
-    _result: tuple[str, str, str] = await core.symbol.call(
-        "auth.qrcode_login", session, model.qrlogin_session_id, model.clear_password
+    access_token, refresh_token, name = await core.symbol.auth_qrcode_login(
+        session, model.qrlogin_session_id, model.clear_password
     )
-    access_token, refresh_token, name = _result
 
     resp.set_cookie(
         "token",
@@ -84,10 +80,9 @@ async def _(
 async def _(
     session: SessionDep, refresh_token: Annotated[str, Cookie()], resp: Response
 ):
-    _result: tuple[str, str] = await core.symbol.call(
-        "auth.refresh_token", session, refresh_token
+    new_access_token, new_refresh_token = await core.symbol.auth_refresh_token(
+        session, refresh_token
     )
-    new_access_token, new_refresh_token = _result
     resp.set_cookie(
         "token",
         new_access_token,
@@ -110,13 +105,13 @@ async def _(
     session: SessionDep,
     user: UserDep,
 ) -> Userinfo:
-    qqpush_config: QQPushConfigSchema = await core.symbol.call(
-        "qqpush.get_configure", session, user.id
+    qqpush_config: QQPushConfigSchema = await core.symbol.qqpush_get_configure(
+        session, user.id
     )
-    is_bound_meetschedule: bool = await core.symbol.call(
-        "meetschedule.is_bound", session, user.id
+    is_bound_meetschedule: bool = await core.symbol.meetschedule_is_bound(
+        session, user.id
     )
-    ics_url_count: int = await core.symbol.call("ics.get_url_count", session, user.id)
+    ics_url_count: int = await core.symbol.ics_get_url_count(session, user.id)
 
     return Userinfo(
         name=user.name,
@@ -128,13 +123,13 @@ async def _(
 
 @router.post("/logout", status_code=204)
 async def _(user: UserDep, resp: Response):
-    await core.symbol.call("auth.logout", user)
+    await core.symbol.auth_logout(user)
     resp.delete_cookie("token")
     resp.delete_cookie("refresh_token", "/api/auth/refresh")
 
 
 @router.delete("/me", status_code=204)
 async def _(session: SessionDep, user: UserDep, resp: Response):
-    await core.symbol.call("auth.delete_account", session, user)
+    await core.symbol.auth_delete_account(session, user)
     resp.delete_cookie("token")
     resp.delete_cookie("refresh_token", "/api/auth/refresh")

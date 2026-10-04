@@ -1,4 +1,5 @@
 import secrets
+from collections.abc import Collection
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from uuid import UUID
@@ -22,18 +23,20 @@ def hash_token(token: str) -> str:
     return sha256(token.encode()).hexdigest()
 
 
+@core.symbol.ics_list_subscriptions.register
 async def list_subscriptions(
     session: AsyncSession, user_id: str
-) -> list[IcsSubscription]:
+) -> Collection[IcsSubscription]:
     stmt = (
         select(IcsSubscription)
         .where(IcsSubscription.user_id == user_id)
         .order_by(IcsSubscription.created_at, IcsSubscription.id)  # ty: ignore[invalid-argument-type]
     )
     resp = await session.execute(stmt)
-    return list(resp.scalars().all())
+    return resp.scalars().all()
 
 
+@core.symbol.ics_get_url_count.register
 async def get_url_count(session: AsyncSession, user_id: str) -> int:
     stmt = (
         select(func.count())
@@ -44,6 +47,7 @@ async def get_url_count(session: AsyncSession, user_id: str) -> int:
     return resp.scalar_one()
 
 
+@core.symbol.ics_create_subscription.register
 async def create_subscription(
     session: AsyncSession, user_id: str
 ) -> tuple[IcsSubscription, str]:
@@ -57,6 +61,7 @@ async def create_subscription(
     return subscription, token
 
 
+@core.symbol.ics_delete_subscription.register
 async def delete_subscription(
     session: AsyncSession, user_id: str, subscription_id: UUID
 ):
@@ -86,6 +91,7 @@ async def _record_fetch(session: AsyncSession, subscription_id: UUID):
     await session.execute(stmt)
 
 
+@core.symbol.ics_render_feed.register
 async def render_feed(
     session: AsyncSession,
     token: str,

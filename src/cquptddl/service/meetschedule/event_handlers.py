@@ -7,7 +7,8 @@ from cquptddl import core
 from cquptddl.exc import MeetscheduleNotBound
 from cquptddl.model.db import User
 from cquptddl.model.db.meetschedule_config import MeetscheduleConfig
-from cquptddl.service.meetschedule.actions import (
+
+from .actions import (
     add_new_homeworks_by_homework_ids,
     unbind,
     update_homeworks_by_homewok_ids,

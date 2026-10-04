@@ -11,6 +11,7 @@ _logger = getLogger(__name__)
 _logger.setLevel(INFO)
 
 
+@core.symbol.homework_complete.register
 async def complete_homework(
     session: AsyncSession, user_id: str, homework_id: UUID, is_complete: bool
 ):

@@ -122,12 +122,12 @@ def test_failed_fetch_still_consumes_cooldown(monkeypatch: pytest.MonkeyPatch):
                 user = await session.get(User, USER_ID)
                 assert user is not None
                 with pytest.raises(RuntimeError):
-                    await fetch.fetch_homework(session, user, PLATFORM)
+                    await fetch.fetch_homework(session, user, PLATFORM)  # ty: ignore[missing-argument]
                 assert (
                     await _read_last_refreshed(maker)
                     > datetime.fromtimestamp(0).astimezone()
                 )
                 with pytest.raises(RefreshCoolingDown):
-                    await fetch.fetch_homework(session, user, PLATFORM)
+                    await fetch.fetch_homework(session, user, PLATFORM)  # ty: ignore[missing-argument]
 
     asyncio.run(case())

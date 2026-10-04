@@ -43,16 +43,16 @@ async def _(
     Args:
         num: 一页的作业数量，-1为所有作业
     """
-    homeworks = await core.symbol.call(
-        "homework.get_cached_homework", session, user.id, platform, num, page
+    homeworks = await core.symbol.homework_get_cached_homework(
+        session, user.id, platform, num, page
     )
     resp = HomeworkResponse(
         homeworks=[HomeworkSchema.model_validate(i.model_dump()) for i in homeworks],
-        count=await core.symbol.call(
-            "homework.get_cached_homework_count", session, user.id, platform
+        count=await core.symbol.homework_get_cached_homework_count(
+            session, user.id, platform
         ),
-        last_refresh_time=await core.symbol.call(
-            "homework.get_last_refresh_time", session, user.id, platform
+        last_refresh_time=await core.symbol.homework_get_last_refresh_time(
+            session, user.id, platform
         ),
     )
     # await refresh(user, platform)
@@ -66,13 +66,13 @@ async def refresh(
     platform: Annotated[PlatformEnum | None, Query()] = None,
 ) -> list[str]:
     if platform is not None:
-        await core.symbol.call("homework.refresh_homework", session, user, platform)
+        await core.symbol.homework_refresh_homework(session, user, platform)
         return []
     else:
         prompts = []
         for p in PlatformEnum:
             try:
-                await core.symbol.call("homework.refresh_homework", session, user, p)
+                await core.symbol.homework_refresh_homework(session, user, p)
             except CquptddlException as e:
                 prompts.append(
                     REFRESH_HOMEWORK_PROMPT_TEMPLATE.format(platform=p, info=e)
@@ -95,4 +95,4 @@ async def _(
     id: UUID,
     model: HomeworkCompleteInput,
 ):
-    await core.symbol.call("homework.complete", session, user.id, id, model.is_complete)
+    await core.symbol.homework_complete(session, user.id, id, model.is_complete)

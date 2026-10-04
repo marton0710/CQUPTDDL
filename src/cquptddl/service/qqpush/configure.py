@@ -7,6 +7,7 @@ from cquptddl.model.schema.qqpush import QQPushConfigSchema
 from .push import push_bind_success_msg
 
 
+@core.symbol.qqpush_configure.register
 async def configure_qqpush(
     session: AsyncSession, user_id: str, model: QQPushConfigSchema
 ):
@@ -17,6 +18,7 @@ async def configure_qqpush(
     await core.hook.trigger("qqpush.after_config_change", user_id=user_id)
 
 
+@core.symbol.qqpush_get_configure.register
 async def get_configure(session: AsyncSession, user_id: str) -> QQPushConfigSchema:
     config = await session.get_one(QQPushConfig, user_id)
     return QQPushConfigSchema(

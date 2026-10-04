@@ -14,9 +14,7 @@ async def _(
     user: UserDep,
     model: MeetscheduleConfigSchema,
 ):
-    await core.symbol.call(
-        "meetschedule.bind", session, user.id, model.meetschedule_key
-    )
+    await core.symbol.meetschedule_bind(session, user.id, model.meetschedule_key)
 
 
 @router.delete("/bind", status_code=202)
@@ -24,4 +22,4 @@ async def _(
     session: SessionDep,
     user: UserDep,
 ):
-    await core.symbol.call("meetschedule.unbind", session, user.id)
+    await core.symbol.meetschedule_unbind(session, user.id)

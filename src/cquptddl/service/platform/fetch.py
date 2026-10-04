@@ -20,6 +20,7 @@ _logger.setLevel(INFO)
 _refresh_cooldown_locks = defaultdict(asyncio.Lock)
 
 
+@core.symbol.platform_fetch_homework.register
 async def fetch_homework(
     session: AsyncSession,
     user: User,

@@ -15,7 +15,7 @@ _logger.setLevel(INFO)
 
 
 def generate_token(uid: str, version: UUID, isrefresh: bool = False) -> str:
-    uidenc: str = core.symbol.call("crypto.aes_encrypt", uid)
+    uidenc = core.symbol.crypto_aes_encrypt(uid)
     exp = datetime.now().astimezone(UTC) + timedelta(
         seconds=config.REFRESH_TOKEN_EXPIRE_SECONDS
         if isrefresh
@@ -46,7 +46,7 @@ async def validate_token(
     if decoded_payload["isrefresh"] != isrefresh:
         raise InvalidToken
     encrypted_uid = decoded_payload["uid"]
-    uid = core.symbol.call("crypto.aes_decrypt", encrypted_uid)
+    uid = core.symbol.crypto_aes_decrypt(encrypted_uid)
     user = await session.get(User, uid)
     if user is None:
         _logger.critical("警告：发现无对应用户的token")

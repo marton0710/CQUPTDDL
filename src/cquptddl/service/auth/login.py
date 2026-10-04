@@ -16,6 +16,7 @@ _logger = getLogger(__name__)
 _logger.setLevel(INFO)
 
 
+@core.symbol.auth_password_login.register
 async def password_login(
     session: AsyncSession, username: str, password: str
 ) -> tuple[str, str, str]:
@@ -30,7 +31,7 @@ async def password_login(
     """
     uid, name, cookies = await ids.password_login(username, password)
     old_user = await session.get(User, uid)
-    encrypted_password: str = core.symbol.call("crypto.aes_encrypt", password)
+    encrypted_password = core.symbol.crypto_aes_encrypt(password)
     if old_user is None:
         user = User(
             id=uid,
@@ -55,6 +56,7 @@ async def password_login(
     )
 
 
+@core.symbol.auth_get_login_qrcode.register
 async def get_login_qrcode() -> tuple[str, uuid.UUID]:
     """获取登录二维码内容
     Returns:
@@ -64,6 +66,7 @@ async def get_login_qrcode() -> tuple[str, uuid.UUID]:
     return await ids.get_login_qrcode()
 
 
+@core.symbol.auth_qrcode_login.register
 async def qrcode_login(
     session: AsyncSession, qrlogin_session_id: uuid.UUID, clear_password: bool
 ) -> tuple[str, str, str]:
@@ -103,6 +106,7 @@ async def qrcode_login(
     )
 
 
+@core.symbol.auth_relogin.register
 async def relogin(user: User):
     """
     Raises:
@@ -111,14 +115,16 @@ async def relogin(user: User):
     if user.password is None:
         core.bus.emit(UserReloginRequiredEvent(uid=user.id))
         raise UserReloginRequired
-    password: str = core.symbol.call("crypto.aes_decrypt", user.password)
+    password = core.symbol.crypto_aes_decrypt(user.password)
     _, _, user.ids_cookie = await ids.password_login(user.id, password)
 
 
+@core.symbol.auth_get_user_from_token.register
 async def get_user_from_token(session: AsyncSession, token: str) -> User:
     return await crypto.validate_token(session, token)
 
 
+@core.symbol.auth_refresh_token.register
 async def refresh_token(session: AsyncSession, token: str) -> tuple[str, str]:
     """
     Returns:
@@ -131,10 +137,12 @@ async def refresh_token(session: AsyncSession, token: str) -> tuple[str, str]:
     ), crypto.generate_token(user.id, user.token_version, True)
 
 
+@core.symbol.auth_logout.register
 async def logout(user: User):
     user.token_version = uuid.uuid7()
 
 
+@core.symbol.auth_delete_account.register
 async def delete_account(session: AsyncSession, user: User):
     await core.hook.trigger("auth.before_delete_user", session, user)
     await session.delete(user)

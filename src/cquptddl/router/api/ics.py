@@ -44,7 +44,7 @@ async def _(
     session: SessionDep,
     user: UserDep,
 ) -> list[IcsSubscriptionSchema]:
-    subscriptions = await core.symbol.call("ics.list_subscriptions", session, user.id)
+    subscriptions = await core.symbol.ics_list_subscriptions(session, user.id)
     return [IcsSubscriptionSchema.model_validate(i.model_dump()) for i in subscriptions]
 
 
@@ -53,9 +53,7 @@ async def _(
     session: SessionDep,
     user: UserDep,
 ) -> IcsSubscriptionCreatedSchema:
-    subscription, token = await core.symbol.call(
-        "ics.create_subscription", session, user.id
-    )
+    subscription, token = await core.symbol.ics_create_subscription(session, user.id)
     # 明文token只在这一次响应里出现，之后库里只有sha256
     return IcsSubscriptionCreatedSchema.model_validate(
         subscription.model_dump() | {"token": token}
@@ -68,7 +66,7 @@ async def _(
     user: UserDep,
     subscription_id: UUID,
 ):
-    await core.symbol.call("ics.delete_subscription", session, user.id, subscription_id)
+    await core.symbol.ics_delete_subscription(session, user.id, subscription_id)
 
 
 @router.get("/feed/{token}.ics", response_class=Response)
@@ -79,7 +77,7 @@ async def _(
     platform: Annotated[PlatformEnum | None, Query()] = None,
 ) -> Response:
     try:
-        body, etag = await core.symbol.call("ics.render_feed", session, token, platform)
+        body, etag = await core.symbol.ics_render_feed(session, token, platform)
     except CquptddlException:
         raise
     except Exception as e:

@@ -12,6 +12,7 @@ from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.schema.platform import PlatformEnum
 
 
+@core.symbol.homework_get_cached_homework.register
 async def get_cached_homework(
     session: AsyncSession,
     user_id: str,
@@ -30,6 +31,7 @@ async def get_cached_homework(
     return resp.scalars().all()
 
 
+@core.symbol.homework_get_cached_homework_count.register
 async def get_cached_homework_count(
     session: AsyncSession, user_id: str, platform_name: PlatformEnum | None = None
 ) -> int:
@@ -40,6 +42,7 @@ async def get_cached_homework_count(
     return resp.scalar_one()
 
 
+@core.symbol.homework_get_last_refresh_time.register
 async def get_last_refresh_time(
     session: AsyncSession, user_id: str, platform_name: PlatformEnum | None = None
 ) -> datetime:
@@ -71,6 +74,7 @@ async def delete_platform_homework(
     await session.execute(stmt)
 
 
+@core.symbol.homework_get_user_dying_homeworks.register
 async def get_user_dying_homeworks(
     session: AsyncSession, user_id: str, scope: int | None = None
 ) -> Collection[Homework]:
@@ -90,9 +94,10 @@ async def get_user_dying_homeworks(
     return resp.scalars().all()
 
 
+@core.symbol.homework_get_user_homeworks_with_deadline.register
 async def get_user_homeworks_with_deadline(
     session: AsyncSession, user_id: str
-) -> Iterable[Homework]:
+) -> Collection[Homework]:
     now = datetime.now().astimezone()
     sql = (
         select(Homework)

@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -7,8 +6,6 @@ from cquptddl import core
 from cquptddl.middleware.auth import UserDep
 from cquptddl.middleware.qqpush import verify_api_key
 from cquptddl.middleware.session import SessionDep
-from cquptddl.model.db import Homework
-from cquptddl.model.db.qqpush_config import QQPushConfig
 from cquptddl.model.schema.qqpush import QQPushConfigSchema
 
 router = APIRouter()
@@ -20,7 +17,7 @@ async def _(
     user: UserDep,
     model: QQPushConfigSchema,
 ):
-    await core.symbol.call("qqpush.configure", session, user.id, model)
+    await core.symbol.qqpush_configure(session, user.id, model)
 
 
 @router.post("/_/dying_homeworks")
@@ -29,16 +26,13 @@ async def _(
     _: Annotated[None, Depends(verify_api_key)],
     qqchan_id: str,
 ):
-    config: QQPushConfig | None = await core.symbol.call(
-        "qqpush.get_user_config_from_qqchan_id", session, qqchan_id
-    )
+    config = await core.symbol.qqpush_get_user_config_from_qqchan_id(session, qqchan_id)
     if config is None:
         return "此ID没有绑定到平台，请先在个人中心完成绑定"
 
-    homeworks: Iterable[Homework] = await core.symbol.call(
-        "homework.get_user_dying_homeworks",
+    homeworks = await core.symbol.homework_get_user_dying_homeworks(
         session,
         config.user_id,
         config.qq_push_scope,
     )
-    await core.symbol.call("qqpush.push_dying_homeworks", config.user_id, homeworks)
+    await core.symbol.qqpush_push_dying_homeworks(config.user_id, homeworks)

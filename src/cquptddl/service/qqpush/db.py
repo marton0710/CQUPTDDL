@@ -1,9 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from cquptddl import core
 from cquptddl.model.db.qqpush_config import QQPushConfig
 
 
+@core.symbol.qqpush_get_user_config_from_qqchan_id.register
 async def get_user_config_from_qqchan_id(
     session: AsyncSession, qqchan_id: str
 ) -> QQPushConfig | None:

@@ -1,19 +1,19 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 
 [[package]]
 name = "abxbus"
-version = "2.5.70"
+version = "2.5.74"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
     { name = "uuid7" },
 ]
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/52/80/43ab38e5a88a6c8864c2460e0685f946f9fcd6cb4776033611107d70ecd6/abxbus-2.5.70.tar.gz", hash = "sha256:e2a6593d67ed619833a6a2b2a282c58312404f166436a0991f5017d51f45fbe5", size = 134824, upload-time = "2026-09-28T18:36:05.082Z" }
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/ec/09/34df1782ac1a17629f92c86e0d7056a816409f8f5e9b59b71aaf53050ec1/abxbus-2.5.74.tar.gz", hash = "sha256:d3e9e609704ddafdf1b935ee025478956bc5cd5f19253c7886e0c561cb60bac3", size = 139208, upload-time = "2026-10-04T06:00:11.896Z" }
 wheels = [
-    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/4d/0b/67ebd55f417b641f05b9ba07d738b75b33924026cda220c9d4f771d6e16e/abxbus-2.5.70-py3-none-any.whl", hash = "sha256:a33727a432ec6729d3bd0674d36bb82d87a1faac66480a3eeddaee23e6960a25", size = 128460, upload-time = "2026-09-28T18:36:06.186Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/03/cc/4dd0593473e0cae9e7e105681618a5cb67b7586665c4ffc19ed371250929/abxbus-2.5.74-py3-none-any.whl", hash = "sha256:63e457ff1396c143568594cd221f46bd1944eb65609271ab4eb4dd91f7878754", size = 132468, upload-time = "2026-10-04T06:00:13.176Z" },
 ]
 
 [[package]]
@@ -743,11 +743,11 @@ wheels = [
 
 [[package]]
 name = "tzdata"
-version = "2026.4"
+version = "2026.5"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/e4/31/3d74fa778a63b98b7374323befcc0be5ab3bd94afd4096a0124e7379152c/tzdata-2026.4.tar.gz", hash = "sha256:f1b8bd365d8d210c55353f4d7f8d6d8561c0ba50d704b700d195a9424bba0d79", size = 199350, upload-time = "2026-09-12T12:56:03.251Z" }
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/d9/68/f1b440335057bfce71b6e50a9d09445aa2ecbd08359a337976627b8409e7/tzdata-2026.5.tar.gz", hash = "sha256:8cc73c0a0bfca7dbfa59235d60b2eff82231dee33f53d206db1acd9173cfc0a7", size = 200404, upload-time = "2026-10-03T09:23:14.143Z" }
 wheels = [
-    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/f9/bc/8737e8d54cf51106118039b83f485a4783112fab49ea9d044b234978a46e/tzdata-2026.4-py2.py3-none-any.whl", hash = "sha256:c2169a8b0a7a5e9674da5a135ccdfb2b3e671b333ed9fed17b41f73c34476e81", size = 347494, upload-time = "2026-09-12T12:56:01.67Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/94/21/1e5995a1c920cce14e4bffae20c665ec10e7ed03ab25e006cd741092b718/tzdata-2026.5-py2.py3-none-any.whl", hash = "sha256:b683bd1b6659ddcd810ff02ad09ba821d4bf1065072805063eb35c49617905ac", size = 347996, upload-time = "2026-10-03T09:23:12.535Z" },
 ]
 
 [[package]]

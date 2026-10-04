@@ -65,8 +65,8 @@ def test_token_is_stored_hashed():
 def test_render_feed_records_fetch_and_keeps_etag_stable():
     async def case(session: AsyncSession):
         subscription, token = await create_subscription(session, "20230001")
-        _, first_etag = await render_feed(session, token)
-        _, second_etag = await render_feed(session, token)
+        _, first_etag = await render_feed(session, token)  # ty: ignore[missing-argument]
+        _, second_etag = await render_feed(session, token)  # ty: ignore[missing-argument]
         await session.refresh(subscription)
         return first_etag, second_etag, subscription
 
@@ -80,7 +80,7 @@ def test_render_feed_records_fetch_and_keeps_etag_stable():
 def test_render_feed_unknown_token():
     async def case(session: AsyncSession):
         await create_subscription(session, "20230001")
-        await render_feed(session, "not-a-token")
+        await render_feed(session, "not-a-token")  # ty: ignore[missing-argument]
 
     with pytest.raises(IcsSubscriptionNotFound):
         run(case)
