@@ -41,7 +41,7 @@ async def _on_recv_homework_done_event(homework_id: UUID):
         await update_homeworks_by_homewok_ids(session, (homework_id,))
 
 
-@core.hook.on("auth.before_delete_user")
+@core.hook.on("auth.before_delete_user", fatal=True)
 async def on_delete_user(session: AsyncSession, user: User):
     try:
         await unbind(session, user.id)
