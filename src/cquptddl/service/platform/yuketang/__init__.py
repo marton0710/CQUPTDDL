@@ -1,4 +1,5 @@
-from datetime import datetime
+import json
+import random
 from logging import INFO, getLogger
 
 from httpx import AsyncClient, HTTPStatusError
@@ -11,11 +12,11 @@ from cquptddl.model.schema.platform import AuthMethod, IDSLoginInput, PlatformEn
 from cquptddl.service.platform.base import Platform as BasePlatform
 from cquptddl.service.platform.base.utils import login_with_ddl_account
 
-from .urls import (
-    GET_COURSE_HOMEWORK_URL,
+from .fetch import (
     GET_COURSES_URL,
-    HOMEWORK_DETAIL_URL,
     IDSLOGIN_SERVICE_URL,
+    get_course,
+    get_course_homeworks,
 )
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0"
@@ -39,19 +40,28 @@ class Yuketang(BasePlatform):
         del client.cookies["sessionid"]
         client.cookies["sessionid"] = sessionid
 
-        return {"sessionid": sessionid}
+        # 获取初始courses缓存
+        courses = await get_course(client)
+
+        return {
+            "sessionid": sessionid,
+            "courses": json.dumps(courses),
+            "courses_ttl": str(random.randint(1, 14)),
+        }
 
     @classmethod
     async def get_homework(
         cls, cookies: dict[str, str], user_id: str
     ) -> list[Homework]:
-        async with core.factory.get_client(cookies=cookies) as client:
+        async with core.factory.get_client(
+            cookies={"sessionid": cookies["sessionid"]}
+        ) as client:
             try:
-                courses = await cls._get_course(client)
+                courses = await _try_courses_cache_and_fallback(client, cookies)
                 homeworks: list[Homework] = []
                 for cn, cid in courses.items():
                     homeworks.extend(
-                        await cls._get_course_homeworks(client, user_id, cn, cid)
+                        await get_course_homeworks(client, user_id, cn, cid)
                     )
             except HTTPStatusError as e:
                 exc = InvalidPlatformCookie()
@@ -66,79 +76,35 @@ class Yuketang(BasePlatform):
         """
         url = GET_COURSES_URL
         async with core.factory.get_client(
-            headers={"User-Agent": UA},
-            cookies=cookies,
+            # headers={"User-Agent": UA},
+            cookies={"sessionid": cookies["sessionid"]},
             timeout=10,
         ) as client:
             return (await client.get(url=url)).status_code == 200
 
-    @staticmethod
-    async def _get_course(client: AsyncClient) -> dict[str, int]:
-        """
-        获取课程列表
-        :return:
-        """
-        dist_url = GET_COURSES_URL
-        class_info: dict[str, int] = {}
-        payload = (await client.get(url=dist_url)).raise_for_status().json()
 
-        course_list = payload.get("data", {}).get("list", [])
-        for item in course_list:
-            name = item.get("name")
-            classroom_id = item.get("classroom_id")
-            if name and classroom_id is not None:
-                class_info[str(name)] = int(classroom_id)
-        return class_info
+async def _try_courses_cache_and_fallback(
+    client: AsyncClient, cookies: dict[str, str]
+) -> dict[str, int]:
+    """
+    尝试使用缓存的课程
+    如果缓存ttl耗尽则回退到联网获取，并重新缓存
+    Returns:
+        courses: {课程名称: 班级id}
+    """
+    courses_str = cookies.get("courses")
+    ttl = int(cookies.get("courses_ttl", "0"))
+    if courses_str is None:
+        courses_str = "{}"
+    courses: dict[str, int] = json.loads(courses_str)
 
-    @classmethod
-    async def _get_course_homeworks(
-        cls, client: AsyncClient, user_id: str, course_name: str, classroom_id: int
-    ):
-        payload = (
-            (
-                await client.get(
-                    GET_COURSE_HOMEWORK_URL.format(classroom_id=classroom_id)
-                )
-            )
-            .raise_for_status()
-            .json()
-        )
-        homeworks: list[Homework] = []
-        for item in payload.get("data", {}).get("activities", []):
-            if item.get("type") == 5:
-                ddl_timestamp = item["deadline"] // 1000
-                homeworks.append(
-                    Homework(
-                        id=Homework.generate_id(user_id, cls.name, str(item["id"])),
-                        user_id=user_id,
-                        course_name=course_name,
-                        title=item["title"],
-                        deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()
-                        if ddl_timestamp != 0
-                        else None,
-                        url=HOMEWORK_DETAIL_URL.format(
-                            classroom_id=classroom_id, hmw_id=item["courseware_id"]
-                        ),
-                        platform="雨课堂",
-                    )
-                )
-            elif item.get("type") == 20:
-                ddl_timestamp = item["content"]["score_d"] // 1000
-                homeworks.append(
-                    Homework(
-                        id=Homework.generate_id(user_id, cls.name, str(item["id"])),
-                        user_id=user_id,
-                        course_name=course_name,
-                        title=item["title"],
-                        deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()
-                        if ddl_timestamp != 0
-                        else None,
-                        url=HOMEWORK_DETAIL_URL.format(
-                            classroom_id=classroom_id,
-                            hmw_id=item["content"]["leaf_type_id"],
-                        ),
-                        platform="雨课堂",
-                    )
-                )
-
-        return homeworks
+    # 上方写法为过渡期间数据库自动迁移的写法，成熟后直接替换为下面的写法：
+    # courses_str: dict[str, int] = json.loads(cookies['courses'])
+    # ttl = int(cookies['courses_ttl'])
+    if ttl:
+        cookies["courses_ttl"] = str(ttl - 1)
+        return courses
+    courses = await get_course(client)
+    cookies["courses"] = json.dumps(courses)
+    cookies["courses_ttl"] = "13"
+    return courses
