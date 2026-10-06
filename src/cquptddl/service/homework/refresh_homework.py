@@ -19,9 +19,7 @@ async def refresh_homework(
     """
 
     # 获取所有作业
-    homeworks = list[Homework](
-        await core.symbol.platform_fetch_homework(session, user, platform_name)  # ty: ignore[missing-argument]
-    )
+    homeworks = await core.symbol.platform_fetch_homework(session, user, platform_name)  # ty: ignore[missing-argument]
 
     # 落库并找出新增的作业id
     stored_homework_ids = set(
@@ -46,6 +44,7 @@ async def refresh_homework(
     # await session.execute(
     #     delete(Homework).where(Homework.id.in_(stored_homework_ids))  # ty: ignore[unresolved-attribute, unused-ignore-comment]
     # )
+
     await session.commit()
     await core.hook.trigger(
         "homework.after_refresh",

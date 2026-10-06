@@ -150,7 +150,7 @@ platform_unbind = AsyncSymbol[[AsyncSession, str, PlatformEnum], None](
     "platform.unbind"
 )
 platform_fetch_homework = AsyncSymbol[
-    [AsyncSession, User, PlatformEnum, bool], Iterable[Homework]
+    [AsyncSession, User, PlatformEnum, bool], set[Homework]
 ]("platform.fetch_homework")
 qqpush_configure = AsyncSymbol[[AsyncSession, str, QQPushConfigSchema], None](
     "qqpush.configure"

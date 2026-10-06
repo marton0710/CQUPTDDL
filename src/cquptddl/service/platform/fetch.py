@@ -1,6 +1,5 @@
 import asyncio
 from collections import defaultdict
-from collections.abc import Iterable
 from datetime import datetime, timedelta
 from logging import INFO, getLogger
 
@@ -26,7 +25,7 @@ async def fetch_homework(
     user: User,
     platform_name: PlatformEnum,
     check_cooldown: bool = True,
-) -> Iterable[Homework]:
+) -> set[Homework]:
     """
     Raises:
         PlatformNotBound: 用户没有绑定该平台
@@ -63,7 +62,7 @@ async def fetch_homework(
             await asyncio.sleep(1)
         else:
             break
-    return homeworks
+    return set(homeworks)
 
 
 async def _check_platform_cooldown(user_id: str, platform_name: PlatformEnum):
