@@ -73,8 +73,6 @@ service/    auth crypto homework ics platform qqpush meetschedule
 exc.py      业务异常（CquptddlException→HTTPException，类属性 status/detail）
 ```
 
-`model/db/__init__.py` 的 `__all__` 里 `LastRefreshTime`、`PlatformCookies` 是历史残留，**已不存在**。
-
 - **User**：主键 `id` = 统一认证码；`password` 是 AES 密文（扫码登录为 `None`）；`token_version` 用于批量失效 token。
 - **Homework**：主键 `id = uuid5(NAMESPACE, user_id + platform + platform_custom)`（`Homework.generate_id`）。`platform_custom` 必须在**用户×平台**内唯一（学习通 `hmw_info["key"]`、学在重邮 `item["id"]`、雨课堂 `str(item["id"])`）。⚠️ 改它 = 改所有作业主键，而刷新**只增不删** → 上线即整体重复一遍，必须配一次性迁移。
 - **PlatformInfo**：主键 `(user_id, platform)`；`credentials` 是 AES 密文 JSON；`last_refreshed_homework` 兼冷却计时。

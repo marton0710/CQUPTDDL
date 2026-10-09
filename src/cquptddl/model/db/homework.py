@@ -5,7 +5,7 @@ from sqlmodel import Field, SQLModel
 
 from cquptddl.model.schema.platform import PlatformEnum
 
-UUID_NAMESPACE_HOMEWORK_ID = uuid.UUID("6db7a68c-8723-4b63-87c8-876e32eda418")
+_UUID_NAMESPACE_HOMEWORK_ID = uuid.UUID("6db7a68c-8723-4b63-87c8-876e32eda418")
 
 
 class Homework(SQLModel, table=True):
@@ -30,7 +30,7 @@ class Homework(SQLModel, table=True):
     @staticmethod
     def generate_id(user_id: str, platform: str, platform_custom: str) -> uuid.UUID:
         return uuid.uuid5(
-            UUID_NAMESPACE_HOMEWORK_ID,
+            _UUID_NAMESPACE_HOMEWORK_ID,
             user_id + platform + platform_custom,
         )
 
