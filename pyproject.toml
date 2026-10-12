@@ -1,6 +1,6 @@
 [project]
 name = "cquptddl"
-version = "2.1.3"
+version = "2.1.4"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -21,7 +21,7 @@ dependencies = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.0",
     "pyjwt>=2.12.1",
-    "sqlmodel>=0.0.38",
+    "sqlmodel[asyncio]>=0.0.38",
     "uvicorn>=0.46.0",
     "abxbus>=2.5.45",
     "apscheduler>=3.11.3",
@@ -41,7 +41,7 @@ fuckids = { index = "Bail" }
 cquptddl = "cquptddl:main"
 
 [build-system]
-requires = ["uv_build<0.13"]
+requires = ["uv_build<0.14"]
 build-backend = "uv_build"
 
 [dependency-groups]

@@ -18,7 +18,7 @@ def make_homework(
     id: str = "0195c3a0-0000-7000-8000-000000000001",
     course_name: str = "高等数学",
     title: str = "第一章作业",
-    deadline: datetime | None = datetime(2026, 3, 1, 23, 59),  # noqa: DTZ001
+    deadline: datetime | None = datetime(2026, 3, 1, 23, 59),
     url: str | None = "https://example.com/hmw/1",
     platform: PlatformEnum = PlatformEnum.CHAOXING,
 ) -> Homework:

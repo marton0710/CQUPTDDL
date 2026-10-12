@@ -55,5 +55,5 @@ async def _refresh_user(user_id: str, **_):
 
 
 @core.hook.on("auth.after_delete_user", background=True)
-def _handle_account_delete_event(user_id: str):
+async def _handle_account_delete_event(user_id: str):
     unbind(user_id)
