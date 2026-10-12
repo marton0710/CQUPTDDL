@@ -41,7 +41,9 @@ async def password_login(
             token_version=uuid.uuid7(),
         )
         session.add(user)
+        await session.commit()
         await core.hook.trigger("auth.after_register", uid)
+        _logger.info("新注册了用户%s", uid)
     else:
         user = old_user
         user.password = encrypted_password
@@ -90,7 +92,9 @@ async def qrcode_login(
             token_version=uuid.uuid7(),
         )
         session.add(user)
+        await session.commit()
         await core.hook.trigger("auth.after_register", uid)
+        _logger.info("新注册了用户%s", uid)
     else:
         user = old_user
         if clear_password:
