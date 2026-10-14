@@ -73,9 +73,10 @@ async def _(
 async def _(
     session: SessionDep,
     request: Request,
+    response: Response,
     token: str,
     platform: Annotated[PlatformEnum | None, Query()] = None,
-) -> Response:
+) -> bytes:
     try:
         body, etag = await core.symbol.ics_render_feed(session, token, platform)
     except CquptddlException:
@@ -94,5 +95,9 @@ async def _(
         "Content-Disposition": f'inline; filename="{ICS_FILENAME}"',
     }
     if _etag_matches(request.headers.get("if-none-match"), etag):
-        return Response(status_code=304, headers=headers)
-    return Response(content=body, media_type=ICS_MEDIA_TYPE, headers=headers)
+        response.status_code = 304
+        response.headers.update(headers)
+        return b""
+    response.media_type = ICS_MEDIA_TYPE
+    response.headers.update(headers)
+    return body

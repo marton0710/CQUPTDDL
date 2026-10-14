@@ -24,6 +24,6 @@ class IcsSubscription(SQLModel, table=True):
         default_factory=lambda: datetime.now().astimezone(),
     )
     fetch_count: int = Field(default=0, description="被拉取次数")
-    last_fetched_at: datetime | None = Field(
-        default=None, description="最后一次拉取时间"
+    last_fetched_at: datetime = Field(
+        default=datetime.fromtimestamp(0).astimezone(), description="最后一次拉取时间"
     )

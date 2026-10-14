@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from hashlib import sha256
 
 import pytest
@@ -66,6 +67,8 @@ def test_render_feed_records_fetch_and_keeps_etag_stable():
     async def case(session: AsyncSession):
         subscription, token = await create_subscription(session, "20230001")
         _, first_etag = await render_feed(session, token)  # ty: ignore[missing-argument]
+        subscription.last_fetched_at = datetime.fromtimestamp(0).astimezone()
+        await session.commit()
         _, second_etag = await render_feed(session, token)  # ty: ignore[missing-argument]
         await session.refresh(subscription)
         return first_etag, second_etag, subscription

@@ -5,12 +5,11 @@ from hashlib import sha256
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
 from cquptddl import core
-from cquptddl.exc import IcsSubscriptionNotFound
+from cquptddl.exc import FeedNotModified, IcsSubscriptionNotFound
 from cquptddl.model.db.ics_subscription import IcsSubscription
 from cquptddl.model.schema.platform import PlatformEnum
 
@@ -78,19 +77,6 @@ async def delete_subscription(
     await session.delete(subscription)
 
 
-async def _record_fetch(session: AsyncSession, subscription_id: UUID):
-    """累加拉取统计。用原子自增避免并发丢更新，且不参与渲染、不影响ETag"""
-    stmt = (
-        update(IcsSubscription)
-        .where(IcsSubscription.id == subscription_id)  # ty: ignore[invalid-argument-type]
-        .values(
-            fetch_count=IcsSubscription.fetch_count + 1,
-            last_fetched_at=datetime.now().astimezone(),
-        )
-    )
-    await session.execute(stmt)
-
-
 @core.symbol.ics_render_feed.register
 async def render_feed(
     session: AsyncSession,
@@ -113,6 +99,17 @@ async def render_feed(
     if subscription is None:
         raise IcsSubscriptionNotFound
 
+    old_subscription_last_fetched_at = subscription.last_fetched_at
+    subscription.fetch_count += 1
+    subscription.last_fetched_at = datetime.now().astimezone()
+    await session.commit()
+
+    last_homework_refresh_time = await core.symbol.homework_get_last_refresh_time(
+        session, subscription.user_id, platform
+    )
+    if old_subscription_last_fetched_at > last_homework_refresh_time:
+        raise FeedNotModified
+
     homeworks = await get_feed_homeworks(session, subscription.user_id, platform)
     tz = ZoneInfo(core.config.ics_timezone)
     body = render_ics(
@@ -121,5 +118,4 @@ async def render_feed(
         duration=timedelta(minutes=core.config.ics_event_duration_minutes),
         dtstamp=to_aware(subscription.created_at, tz).astimezone(UTC),
     )
-    await _record_fetch(session, subscription.id)
     return body, feed_etag(body)

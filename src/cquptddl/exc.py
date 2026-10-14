@@ -111,3 +111,8 @@ class RaceLimitExceed(CquptddlException):
 class IcsSubscriptionNotFound(CquptddlException):
     status = 404
     detail = "ICS订阅不存在或已被撤销"
+
+
+class FeedNotModified(CquptddlException):
+    status = 304
+    detail = "ICS内容没有变化"
