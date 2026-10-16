@@ -108,6 +108,16 @@ class RaceLimitExceed(CquptddlException):
     detail = "服务器忙，请稍后重试"
 
 
+class HaveToUnbindMeetschedule(CquptddlException):
+    """Meet课程表同步的内部信号：远端 key/课程表不可用，本轮末自动解绑该用户。
+
+    ⚠️ 只用于 ``meetschedule/refresh_task.py`` 内部的控制流（由 ``_run_user`` 捕获），
+    不会被抛给用户，因此这里不对外暴露语义。
+    """
+
+    detail = "需要解绑meet课程表"
+
+
 class IcsSubscriptionNotFound(CquptddlException):
     status = 404
     detail = "ICS订阅不存在或已被撤销"

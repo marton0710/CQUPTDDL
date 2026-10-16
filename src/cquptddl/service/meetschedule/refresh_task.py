@@ -7,8 +7,12 @@
   而是统一产出 ``list[ItemOutcome]``，由唯一落库器 ``_apply_outcomes`` 执行。
 * 创建事件成功后回填 ``meet_event_id``（修"事件 id 永不回填"的断链）。
 * 清理永远无法镜像的条目（作业已删除 / 无 deadline），避免无限重试。
-* Meet api-key 无效（401）/权限不足（403）：检测到的用户在本窗口末尾统一自动解绑，
-  期间从阶段循环中剔除，不再对其发无效请求。
+* Meet api-key 无效（401）/权限不足（403）/课程表不存在（404）：各远端调用点把这些
+  SDK 异常翻译成 ``HaveToUnbindMeetschedule`` 抛出，检测到的用户在本窗口末尾统一
+  自动解绑，期间从阶段循环中剔除，不再对其发无效请求。
+  ⚠️ 新增远端调用时**必须**同样翻译 401/403/404，漏了就会退化成每轮无限 TRANSIENT 重试。
+  ⚠️ ``_update_user`` 的 404 是例外：event 级 404 表示远端事件已不存在，有明确的
+  回退语义（判 MISSING 回推重建），不解绑。
 * 回拉阶段发现本地作业已不存在 → 置 PENDING_DELETE，交给删除阶段清理远端镜像。
 """
 
@@ -41,6 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from cquptddl import core
+from cquptddl.exc import HaveToUnbindMeetschedule
 from cquptddl.model.db import Homework
 from cquptddl.model.db.meetschedule_config import MeetscheduleConfig
 from cquptddl.model.db.meetschedule_tracked_event import (
@@ -125,7 +130,7 @@ async def _job():
     分组在 mutate 任何 entry 之前就完成（快照），保证后跑的阶段不受前面
     阶段改状态的影响。全程用一个 ``core.get_session()``，退出时统一 commit。
 
-    本窗口内检测到 401/403 需要解绑的用户收集进 ``to_unbind``：一旦加入即从
+    本窗口内检测到 401/403/404 需要解绑的用户收集进 ``to_unbind``：一旦加入即从
     后续阶段剔除（不再对其打无效请求），等所有阶段跑完后统一本地解绑——
     避免在阶段循环中间删数据而污染快照分区。
     """
@@ -191,8 +196,8 @@ async def _run_user(
 
     - 本窗口内已判定需解绑的用户（在 ``to_unbind`` 里）直接跳过——这是
       "剔除循环"，不再对其打无效请求。
-    - 401/403 无法靠重试恢复 → 只把用户加入 ``to_unbind``（本轮末尾统一解绑），
-      不在阶段循环中间删数据。
+    - 401/403/404 无法靠重试恢复 → 远端调用点翻译成 ``HaveToUnbindMeetschedule``，
+      这里只把用户加入 ``to_unbind``（本轮末尾统一解绑），不在阶段循环中间删数据。
     - 其余异常（网络/限流等临时性错误）整体标 TRANSIENT 重试，不逐条误删。
     """
     if user_id in to_unbind:
@@ -212,26 +217,12 @@ async def _run_user(
             AsyncMeetSchedule(config.api_key, client=client) as meet,
         ):
             return await runner(meet, config, group, homework_by_id)
-    except UnauthorizedError as exc:
-        # api-key 无效（401）→ 本轮末自动解绑，避免每轮重试。
-        _logger.error(
-            "用户%s的Meet api-key 无效（401），本轮末将自动解绑", user_id, exc_info=exc
-        )
+    except HaveToUnbindMeetschedule:
+        _logger.exception("用户%s的meet课程表出现问题，本轮末将自动解绑", user_id)
         to_unbind.add(user_id)
         return []
-    except ForbiddenError as exc:
-        # 权限不足（403）同样无法靠重试解决 → 本轮末自动解绑。
-        _logger.error(
-            "用户%s的Meet api-key 权限不足（403），本轮末将自动解绑",
-            user_id,
-            exc_info=exc,
-        )
-        to_unbind.add(user_id)
-        return []
-    except Exception as exc:
-        _logger.error(
-            "处理用户%s的%s阶段时发生异常", user_id, phase.value, exc_info=exc
-        )
+    except Exception:
+        _logger.exception("处理用户%s的%s阶段时发生异常", user_id, phase.value)
 
     return [ItemOutcome(e.id, RemoteResult.TRANSIENT) for e in group]
 
@@ -403,10 +394,10 @@ async def _push_batch(
     except (UnprocessableEntityError, ConflictError) as exc:
         _logger.debug("批量创建触发%s，降级为逐条创建", type(exc).__name__)
         return await _push_singly(meet, batch)
-    except UnauthorizedError, ForbiddenError:
-        raise
-    except Exception as exc:
-        _logger.error("批量创建作业时发生异常", exc_info=exc)
+    except (UnauthorizedError, ForbiddenError, NotFoundError) as e:
+        raise HaveToUnbindMeetschedule from e
+    except Exception:
+        _logger.exception("课程表%s批量创建作业时发生异常", schedule_id)
         return [ItemOutcome(hid, RemoteResult.TRANSIENT) for hid, _ in batch]
 
     if len(events) != len(batch):
@@ -435,8 +426,8 @@ async def _push_singly(
                 _logger.warning("创建作业%s永久失败: %s", hid, exc)
                 outcomes.append(ItemOutcome(hid, RemoteResult.PERMANENT))
                 continue
-            except UnauthorizedError, ForbiddenError:
-                raise
+            except (UnauthorizedError, ForbiddenError) as e:
+                raise HaveToUnbindMeetschedule from e
             except Exception as exc:
                 _logger.error("创建作业%s发生异常", hid, exc_info=exc)
                 outcomes.append(ItemOutcome(hid, RemoteResult.TRANSIENT))
@@ -469,8 +460,8 @@ async def _update_user(
                 _logger.warning("更新作业%s：远端事件已不存在", e.id)
                 outcomes.append(ItemOutcome(e.id, RemoteResult.MISSING))
                 continue
-            except UnauthorizedError, ForbiddenError:
-                raise
+            except (UnauthorizedError, ForbiddenError) as e:
+                raise HaveToUnbindMeetschedule from e
             except Exception as exc:
                 _logger.error("更新作业%s发生异常", e.id, exc_info=exc)
                 outcomes.append(ItemOutcome(e.id, RemoteResult.TRANSIENT))
@@ -497,8 +488,8 @@ async def _delete_user(
         async with limiter.acquire(meet):
             try:
                 await meet.events.delete_batch(event_ids)
-            except UnauthorizedError, ForbiddenError:
-                raise
+            except (UnauthorizedError, ForbiddenError) as e:
+                raise HaveToUnbindMeetschedule from e
             except Exception as exc:
                 _logger.error("删除作业发生异常", exc_info=exc)
                 outcomes += [
@@ -545,8 +536,8 @@ async def _pull_user(
         try:
             async with limiter.acquire(meet):
                 events = await meet.events.get_by_ids([evid for _, evid in valid])
-        except UnauthorizedError, ForbiddenError:
-            raise
+        except (UnauthorizedError, ForbiddenError) as e:
+            raise HaveToUnbindMeetschedule from e
         except Exception as exc:
             _logger.error("回拉作业时发生异常", exc_info=exc)
             outcomes += [ItemOutcome(e.id, RemoteResult.TRANSIENT) for e in batch]
