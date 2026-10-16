@@ -55,6 +55,8 @@ def test_refresh_homework_dedups_with_mocked_fetch():
 
             trigger = AsyncMock()
             with (
+                # core.symbol.mock 只在 DEBUG 下放行；不能依赖本地 .env（CI 里 DEBUG 默认 false）
+                patch.object(core.config, "DEBUG", True),
                 core.symbol.mock("platform.fetch_homework", fake_fetch),
                 patch.object(core.hook, "trigger", trigger),
             ):

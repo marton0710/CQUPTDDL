@@ -1,21 +1,21 @@
 # AGENTS.md — CQUPTDDL（重邮聚合截止线）后端
 
-跨会话速查手册，先读这里。约 4.7k 行 Python，全在 `src/cquptddl/`。
+跨会话速查手册，先读这里。约 4.9k 行 Python，全在 `src/cquptddl/`。
 
 ## 1. 项目速览
 
 聚合 **学在重邮 / 学习通 / 雨课堂** 作业的 REST API；可选同步成 **Meet课程表** 事件，并经 QQ 机器人（qqchan）推送临期/新作业。
 
 - Python **>=3.14**（`uuid7`、`itertools.batched`）+ **uv**；入口 `cquptddl:main`，运行 `uv run cquptddl`（`DEBUG=true` 时 reload 且只监听 127.0.0.1）。
-- 开发分支 `v2`（`master` 落后），远端 `git@github.com:marton0710/CQUPTDDL.git`；`README.md` 是空的。
-- 部署：`Dockerfile`（python:3.14-alpine）从自建源 `pypi.bail.asia` 装包，前端 `COPY fe /fe` 由 `FRONTEND_DIR` 指向，暴露 8000。
+- 开发分支 `v2`（`master` 落后），远端 `git@github.com:marton0710/CQUPTDDL.git`；`README.md` 已按主流格式写好，CI 在 `.github/workflows/ci.yml`。
+- 部署：`Dockerfile`（python:3.15-alpine）从自建源 `pypi.bail.asia` 装包，前端 `COPY fe /fe` 由 `FRONTEND_DIR` 指向，暴露 8000。
 - 前端静态托管在 `router/__init__.py`：`FRONTEND_DIR` 有值才 `router.frontend("/", ..., fallback="index.html")`，随 `app.include_router` 生效。
 
 ## 2. 配置、检查与验证
 
-- 配置来自 `.env`（`pydantic-settings`，`extra="ignore"`，大小写不敏感），见 `core/config.py`。**必需**：`DATABASE_URL`、`SECRET_KEY`、`QQBOT_URL`、`QQBOT_RECV_API_KEY`、`QQBOT_SEND_API_KEY`。没有 `.env.example`（`.env` 已 gitignore），根目录有本地 `test.db`。
+- 配置来自 `.env`（`pydantic-settings`，`extra="ignore"`，大小写不敏感），见 `core/config.py`。**必需**：`DATABASE_URL`、`SECRET_KEY`、`QQBOT_URL`、`QQBOT_RECV_API_KEY`、`QQBOT_SEND_API_KEY`。`.env.example` 是模板（`.env` 已 gitignore，模板用 `!.env.example` 例外放行），根目录有本地 `test.db`。
 - **建表只有 `SQLModel.metadata.create_all`**（`core/db.py:_migrate_db`）：只建缺失的表，**永不 ALTER**。改字段/类型得自己写一次性迁移或重建库，别往 `_migrate_db` 塞自动迁移。
-- 改完 `.py` 必须在**仓库根**跑 `ty check && ruff check . && ruff format --check .`（`ty`/`ruff` 是全局命令，不在 `.venv`，`pyproject.toml` 里也没有配置段）。基线三条全绿（format 输出 `88 files already formatted`）；**不要 `ruff format .` 全量改写**，要修只 format 单个文件。
+- 改完 `.py` 必须在**仓库根**跑 `ty check && ruff check . && ruff format --check .`（`ty`/`ruff` 是全局命令，不在 `.venv`，`pyproject.toml` 里也没有配置段）。基线三条全绿（format 输出 `90 files already formatted`）；**不要 `ruff format .` 全量改写**，要修只 format 单个文件。
 - `ty` 会被 SQLModel 表达式误报：`select(M).where(列 == 值)` 常判 `invalid-argument-type`，照现有代码挂 `# ty: ignore[invalid-argument-type]`（`select(M.id)` / `select(func.count())` 一般不用）。抑制写 `# ty: ignore[规则]` / `# noqa: 规则`，不是 `# type: ignore`；只读文件系统下 ruff 加 `--no-cache`。
 - 验证：`uv run python -c "import cquptddl"` 能抓大部分 import / 符号注册错误，`/docs` 看路由；注意它会读 `.env` 并连库。
 
@@ -112,7 +112,7 @@ exc.py      业务异常（CquptddlException→HTTPException，类属性 status/
 
 ### qqpush
 
-- **现役是 `push.py`**（qqchan `/qqchan/send`，默认纯文本），只有它被 import；`push_wild.py` / `push_official.py` 是同源死代码（零引用），改推送只改 `push.py`。⚠️ 死代码里也挂着同名的 `@core.symbol...register` / `@core.hook.on` —— **别顺手 import 它们**，重复注册会直接 `NameError`。
+- **现役是 `push.py`**（qqchan `/qqchan/send`，默认纯文本），它是指向 `push_wild.py` 的**符号链接**；`push_official.py` 是同接口的官方机器人备用实现。QQ 官方机器人暂未对个人开放，故先用野生通道，政策放开后把链接目标改成 `push_official.py` 即可切换，业务代码零改动。⚠️ 两个实现里挂着同名的 `@core.symbol...register` / `@core.hook.on` —— **绝不可同时 import 两者**，重复注册会直接 `NameError`。
 - 后端 → 机器人用 `QQBOT_RECV_API_KEY`，机器人 → 后端用 `QQBOT_SEND_API_KEY`（`X-API-Key`，`middleware/qqpush.verify_api_key`）。命名与 qqbot 端一致，**不对称是故意的**。
 - `ScheduledStrategy`（cron 推 scope 小时内截止的）与 `RealtimeStrategy`（每作业一个 job，`deadline - scope` 触发）；实时推送进 `buffer`（`asyncio.Lock`），由 5 秒间隔的 `push_buffered_homeworks` 合并发送。未绑定 `qqchan_id` 静默跳过；返回 `"无此id"` → 抛 `QQChanIDNotExist` → `_unbind` 清空绑定并触发 `qqpush.after_config_change` 钩子（重载推送策略）。
 
@@ -137,7 +137,7 @@ exc.py      业务异常（CquptddlException→HTTPException，类属性 status/
 ## 7. 约定
 
 - 注释、日志、异常 detail 全是**中文**；提交信息 Conventional Commits（`feat(scope):` / `fix(scope):` / …）。
-- 测试用 pytest，`tests/` 有 6 个文件（ics feed / 订阅 / url 计数 / 平台冷却 / version / 符号 mock）；dev 依赖里 `respx` 零引用。
+- 测试用 pytest，`tests/` 有 8 个文件（ics feed / 订阅 / url 计数 / 强制缓存 / 平台冷却 / version / 符号 mock / meetschedule 真值表）；dev 依赖里 `respx` 零引用。
 - 每个模块 `_logger = getLogger(__name__)` 并显式 `setLevel`（根 logger 是 WARNING，不设看不到日志）。
 - 业务异常一律加进 `exc.py`（继承 `CquptddlException`，类属性写 `status`/`detail`）；抛未知异常前先记日志并给用户 uuid 错误码。
 - `session.get_one()` 会抛 `NoResultFound`；"可能不存在"用 `session.get()` 并判 `None`。路由函数名大量重复用 `_`（FastAPI 只看装饰器）。

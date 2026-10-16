@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 静态检查与测试
+    runs-on: ubuntu-latest
+    env:
+      # 仅为让 pydantic-settings 通过校验；测试全部使用内存 SQLite，不会连真实库
+      DATABASE_URL: sqlite+aiosqlite://
+      SECRET_KEY: ci-only-secret-key
+      QQBOT_URL: http://127.0.0.1:9999
+      QQBOT_RECV_API_KEY: ci-only-recv-key
+      QQBOT_SEND_API_KEY: ci-only-send-key
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 安装 uv
+        # setup-uv 只维护到 v7 的浮动大版本 tag（v8/v9/v10 均无 vN tag），必须写完整版本号
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+
+      - name: 同步依赖（按 uv.lock，并下载 .python-version 指定的解释器）
+        run: uv sync --dev --frozen
+
+      - name: ruff check
+        run: uvx ruff check .
+
+      - name: ruff format --check
+        run: uvx ruff format --check .
+
+      - name: ty check
+        run: uvx ty check
+
+      - name: pytest
+        run: uv run pytest -q
