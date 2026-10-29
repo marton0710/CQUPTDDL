@@ -61,7 +61,11 @@ class Yuketang(BasePlatform):
                 homeworks: list[Homework] = []
                 for cn, cid in courses.items():
                     homeworks.extend(
-                        await get_course_homeworks(client, user_id, cn, cid)
+                        await get_course_homeworks(client, user_id, cn, cid, "homework")
+                    )
+
+                    homeworks.extend(
+                        await get_course_homeworks(client, user_id, cn, cid, "exam")
                     )
             except HTTPStatusError as e:
                 exc = InvalidPlatformCookie()

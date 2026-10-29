@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from httpx2 import AsyncClient
 
@@ -7,7 +8,8 @@ from cquptddl.model.schema.platform import PlatformEnum
 
 IDSLOGIN_SERVICE_URL = "http://cqupt.yuketang.cn/edu_admin/university_cas_login/3042/"
 GET_COURSES_URL = "https://changjiang.yuketang.cn/v2/api/web/courses/list?identity=2"
-GET_COURSE_HOMEWORK_URL = "https://changjiang.yuketang.cn/v2/api/web/logs/learn/{classroom_id}?actype=5&page=0&offset=20&sort=-1"
+GET_COURSE_HOMEWORK_URL = "https://changjiang.yuketang.cn/v2/api/web/logs/learn/{classroom_id}?actype=15&page=0&offset=20&sort=-1"
+GET_COURSE_EXAM_URL = "https://changjiang.yuketang.cn/v2/api/web/logs/learn/{classroom_id}?actype=5&page=0&offset=20&sort=-1"
 HOMEWORK_DETAIL_URL = (
     "https://changjiang.yuketang.cn/v2/web/exam/{classroom_id}/{hmw_id}"
 )
@@ -33,53 +35,65 @@ async def get_course(client: AsyncClient) -> dict[str, int]:
 
 
 async def get_course_homeworks(
-    client: AsyncClient, user_id: str, course_name: str, classroom_id: int
+    client: AsyncClient,
+    user_id: str,
+    course_name: str,
+    classroom_id: int,
+    type: Literal["homework", "exam"],
 ) -> list[Homework]:
-    payload = (
-        (await client.get(GET_COURSE_HOMEWORK_URL.format(classroom_id=classroom_id)))
-        .raise_for_status()
-        .json()
-    )
+    match type:
+        case "homework":
+            resp = await client.get(
+                GET_COURSE_HOMEWORK_URL.format(classroom_id=classroom_id)
+            )
+        case "exam":
+            resp = await client.get(
+                GET_COURSE_EXAM_URL.format(classroom_id=classroom_id)
+            )
+        case _:
+            raise ValueError(f"非法的type值：{type}")
+    payload = resp.raise_for_status().json()
     homeworks: list[Homework] = []
     for item in payload.get("data", {}).get("activities", []):
-        if item.get("type") == 5:
-            ddl_timestamp = item["deadline"] // 1000
-            homeworks.append(
-                Homework(
-                    id=Homework.generate_id(
-                        user_id, PlatformEnum.YUKETANG, str(item["id"])
-                    ),
-                    user_id=user_id,
-                    course_name=course_name,
-                    title=item["title"],
-                    deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()
-                    if ddl_timestamp != 0
-                    else None,
-                    url=HOMEWORK_DETAIL_URL.format(
-                        classroom_id=classroom_id, hmw_id=item["courseware_id"]
-                    ),
-                    platform=PlatformEnum.YUKETANG,
+        match item.get("type"):
+            case 5:
+                ddl_timestamp = item["deadline"] // 1000
+                homeworks.append(
+                    Homework(
+                        id=Homework.generate_id(
+                            user_id, PlatformEnum.YUKETANG, str(item["id"])
+                        ),
+                        user_id=user_id,
+                        course_name=course_name,
+                        title=item["title"],
+                        deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()
+                        if ddl_timestamp != 0
+                        else None,
+                        url=HOMEWORK_DETAIL_URL.format(
+                            classroom_id=classroom_id, hmw_id=item["courseware_id"]
+                        ),
+                        platform=PlatformEnum.YUKETANG,
+                    )
                 )
-            )
-        elif item.get("type") == 20:
-            ddl_timestamp = item["content"]["score_d"] // 1000
-            homeworks.append(
-                Homework(
-                    id=Homework.generate_id(
-                        user_id, PlatformEnum.YUKETANG, str(item["id"])
-                    ),
-                    user_id=user_id,
-                    course_name=course_name,
-                    title=item["title"],
-                    deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()
-                    if ddl_timestamp != 0
-                    else None,
-                    url=HOMEWORK_DETAIL_URL.format(
-                        classroom_id=classroom_id,
-                        hmw_id=item["content"]["leaf_type_id"],
-                    ),
-                    platform=PlatformEnum.YUKETANG,
+            case 19 | 20:
+                ddl_timestamp = item["content"]["score_d"] // 1000
+                homeworks.append(
+                    Homework(
+                        id=Homework.generate_id(
+                            user_id, PlatformEnum.YUKETANG, str(item["id"])
+                        ),
+                        user_id=user_id,
+                        course_name=course_name,
+                        title=item["title"],
+                        deadline=datetime.fromtimestamp(ddl_timestamp).astimezone()
+                        if ddl_timestamp != 0
+                        else None,
+                        url=HOMEWORK_DETAIL_URL.format(
+                            classroom_id=classroom_id,
+                            hmw_id=item["content"]["leaf_type_id"],
+                        ),
+                        platform=PlatformEnum.YUKETANG,
+                    )
                 )
-            )
 
     return homeworks
