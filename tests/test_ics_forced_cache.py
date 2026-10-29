@@ -19,7 +19,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from uuid import UUID
 
-import httpx
+import httpx2
 import pytest
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -143,10 +143,10 @@ def _app(maker: SessionMaker) -> FastAPI:
 
 async def _fetch(
     app: FastAPI, token: str, headers: dict[str, str] | None = None
-) -> httpx.Response:
+) -> httpx2.Response:
     """按日历客户端的方式拉 feed：默认一个缓存相关的请求头都不带"""
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    async with httpx2.AsyncClient(
+        transport=httpx2.ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         return await client.get(f"/api/ics/feed/{token}.ics", headers=headers)
 
@@ -171,7 +171,7 @@ def test_new_subscription_first_fetch_gets_body(last_refreshed: datetime | None)
     现状不满足：``last_fetched_at`` 是 NULL，拿 None 去比时间会 TypeError。
     """
 
-    async def case() -> tuple[httpx.Response, tuple[int, datetime | None]]:
+    async def case() -> tuple[httpx2.Response, tuple[int, datetime | None]]:
         async with _memory_db() as maker:
             token, subscription_id = await _seed(maker, last_refreshed=last_refreshed)
             response = await _fetch(_app(maker), token)
@@ -199,7 +199,7 @@ def test_no_new_data_returns_empty_304(headers: dict[str, str] | None):
     """
     before = datetime.now().astimezone()
 
-    async def case() -> tuple[httpx.Response, tuple[int, datetime | None]]:
+    async def case() -> tuple[httpx2.Response, tuple[int, datetime | None]]:
         async with _memory_db() as maker:
             token, subscription_id = await _seed(
                 maker,
@@ -243,7 +243,7 @@ def test_repeated_fetch_never_bypasses_the_cache():
 def test_platform_refresh_lets_the_cache_expire():
     """平台刷新后缓存自然放行：新作业出现在 feed 里，然后立刻又回到 304"""
 
-    async def case() -> tuple[httpx.Response, httpx.Response, httpx.Response]:
+    async def case() -> tuple[httpx2.Response, httpx2.Response, httpx2.Response]:
         async with _memory_db() as maker:
             now = datetime.now().astimezone()
             token, _ = await _seed(
@@ -270,7 +270,7 @@ def test_platform_refresh_lets_the_cache_expire():
 def test_etag_hit_still_counts_as_a_fetch():
     """强制缓存不拦时（数据源时间戳在前方）照常渲染；客户端拿相同 ETag 再来还是 304，照样计数"""
 
-    async def case() -> tuple[httpx.Response, httpx.Response, int]:
+    async def case() -> tuple[httpx2.Response, httpx2.Response, int]:
         async with _memory_db() as maker:
             token, subscription_id = await _seed(
                 maker,
@@ -293,7 +293,7 @@ def test_etag_hit_still_counts_as_a_fetch():
 def test_new_subscription_bypasses_the_cache():
     """要新内容就新建一条订阅：新 token 没有拉取记录，第一次一定给正文"""
 
-    async def case() -> tuple[httpx.Response, httpx.Response]:
+    async def case() -> tuple[httpx2.Response, httpx2.Response]:
         async with _memory_db() as maker:
             now = datetime.now().astimezone()
             token_old, _ = await _seed(

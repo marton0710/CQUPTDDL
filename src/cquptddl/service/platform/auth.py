@@ -2,7 +2,7 @@ from datetime import datetime
 from logging import INFO, getLogger
 from uuid import uuid4
 
-import httpx
+import httpx2
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
@@ -106,7 +106,7 @@ async def valid_cookie(
     platform = Platform.get_platform_by_name(platform_name)
     try:
         return await platform.valid_cookie(platform_info.cookies)
-    except httpx.TimeoutException:
+    except httpx2.TimeoutException:
         _logger.warning(
             "用户%s检查平台%s的cookie有效性时发生超时", user_id, platform_name
         )

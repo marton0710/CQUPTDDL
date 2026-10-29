@@ -2,7 +2,7 @@ from datetime import datetime
 from logging import INFO, getLogger
 from urllib.parse import parse_qs
 
-from httpx import AsyncClient, HTTPStatusError
+from httpx2 import AsyncClient, HTTPStatusError
 
 from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie, LoginFailed

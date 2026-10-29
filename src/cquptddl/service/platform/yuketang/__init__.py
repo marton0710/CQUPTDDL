@@ -2,7 +2,7 @@ import json
 import random
 from logging import INFO, getLogger
 
-from httpx import AsyncClient, HTTPStatusError
+from httpx2 import AsyncClient, HTTPStatusError
 
 from cquptddl import core
 from cquptddl.exc import InvalidPlatformCookie

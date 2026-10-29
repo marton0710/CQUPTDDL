@@ -3,7 +3,7 @@ from collections.abc import Collection
 from logging import getLogger
 from uuid import UUID
 
-from httpx import URL
+from httpx2 import URL
 from sqlmodel import select
 
 from cquptddl import core

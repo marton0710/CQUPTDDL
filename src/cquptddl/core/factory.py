@@ -2,7 +2,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from importlib import metadata
 
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import _session_maker

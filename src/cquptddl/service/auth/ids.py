@@ -4,7 +4,7 @@ from logging import INFO, getLogger
 from typing import Any
 
 import fuckids
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from cquptddl import core
 from cquptddl.exc import LoginFailed, QRCodeNotScanned, QRLoginSessionNotFound

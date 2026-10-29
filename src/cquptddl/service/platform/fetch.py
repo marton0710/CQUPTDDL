@@ -3,7 +3,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from logging import INFO, getLogger
 
-import httpx
+import httpx2
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cquptddl import core
@@ -49,7 +49,7 @@ async def fetch_homework(
                 )
                 await auth.relogin(session, user, platform_name)
                 homeworks = await platform.get_homework(platform_info.cookies, user.id)
-        except httpx.TimeoutException:
+        except httpx2.TimeoutException:
             if attempt_time >= core.config.homework_refresh_attempts - 1:
                 raise
             _logger.warning(

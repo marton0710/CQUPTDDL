@@ -12,9 +12,8 @@ dependencies = [
     "aiomysql>=0.3.2",
     "beautifulsoup4>=4.14.3",
     "fastapi>=0.136.1",
-    "fuckids>=2.4",
+    "fuckids>=2.6",
     "furl>=2.1.4",
-    "httpx>=0.28.1",
     "lxml>=6.1.0",
     "meetschedule-sdk>=1.4",
     "pycryptodome>=3.23.0",
@@ -27,11 +26,13 @@ dependencies = [
     "apscheduler>=3.11.3",
     "throttled-py>=3.4.1",
     "icalendar>=7.3.0",
+    "httpx2>=2.16.0",
 ]
 
 [[tool.uv.index]]
-name = 'Bail'
-url = "https://pypi.bail.asia/simple/"
+name = "Bail"
+url = "https://git.bail.asia/api/packages/BailPlus/pypi/simple/"
+publish-url = "https://git.bail.asia/api/packages/BailPlus/pypi"
 explicit = true
 
 [tool.uv.sources]
@@ -48,5 +49,4 @@ build-backend = "uv_build"
 dev = [
     "aiosqlite>=0.22.1",
     "pytest>=9.1.1",
-    "respx>=0.23.1",
 ]

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from cquptddl.model.db import Homework
 from cquptddl.model.schema.platform import PlatformEnum

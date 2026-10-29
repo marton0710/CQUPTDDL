@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from logging import INFO, getLogger
 from typing import ClassVar
 
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from cquptddl.model.db import User
 from cquptddl.model.db.homework import Homework

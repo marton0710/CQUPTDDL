@@ -12,7 +12,7 @@ import asyncio
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
-from httpx import ASGITransport, AsyncClient
+from httpx2 import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
